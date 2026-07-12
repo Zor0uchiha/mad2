@@ -40,9 +40,13 @@ jobs:
           # Set compileSdk to 35 (override flutter.compileSdkVersion)
           sed -i "s/compileSdk = flutter.compileSdkVersion/compileSdk = 35/" android/app/build.gradle || true
           sed -i "s/compileSdk [0-9]\+/compileSdk = 35/" android/app/build.gradle || true
-          # Update AGP to 8.7.3 for compatibility with compileSdk 35
-          sed -i "s/com\.android\.tools\.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.7.3/" android/build.gradle || true
-          # Update Kotlin version
+          # Update AGP version (newer templates use plugins block in settings.gradle)
+          sed -i 's/"com.android.application" version "[^"]*"/"com.android.application" version "8.7.3"/' android/settings.gradle || true
+          # Fallback: old templates use classpath in build.gradle
+          sed -i 's/com\.android\.tools\.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.7.3/' android/build.gradle || true
+          # Update Kotlin version (newer templates: settings.gradle)
+          sed -i 's/org\.jetbrains\.kotlin\.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.0.21"/' android/settings.gradle || true
+          # Fallback: old templates use ext.kotlin_version in build.gradle
           sed -i "s/ext\.kotlin_version = '[^']*'/ext.kotlin_version = '2.0.21'/" android/build.gradle || true
           # Update gradle wrapper for AGP 8.7.x
           sed -i "s|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip|" android/gradle/wrapper/gradle-wrapper.properties || true
