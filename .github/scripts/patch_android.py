@@ -29,10 +29,13 @@ app_gradle = "android/app/build.gradle"
 with open(app_gradle) as f:
     content = f.read()
 if 'desugar_jdk_libs' not in content:
-    content = content.replace(
-        'dependencies {',
-        'dependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"'
-    )
+    if 'dependencies {' in content:
+        content = content.replace(
+            'dependencies {',
+            'dependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"'
+        )
+    else:
+        content += '\ndependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"\n}\n'
     with open(app_gradle, 'w') as f:
         f.write(content)
     print("Added desugar_jdk_libs dependency")
