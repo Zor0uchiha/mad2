@@ -1,21 +1,27 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "../data/services/settings_service.dart";
-import "../data/services/auth_service.dart";
-import "../data/services/online_book_service.dart";
-import "../data/models/book_model.dart";
-import "../data/models/collection_model.dart";
-import "../data/models/user_model.dart";
-import "../data/models/review_model.dart";
-import "../data/models/reading_list_model.dart";
-import "../data/models/bookmark_model.dart";
-import "../data/models/note_model.dart";
-import "../data/models/reading_progress_model.dart";
-import "../data/models/reading_goal_model.dart";
-import "../../core/theme/app_theme.dart";
-import "../../core/constants/app_constants.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:hive_flutter/hive_flutter.dart";
+import "app.dart";
+import "data/models/book_model.dart";
+import "data/models/book_model_adapter.dart";
+import "data/models/collection_model.dart";
+import "data/models/collection_model_adapter.dart";
+import "data/models/user_model.dart";
+import "data/models/user_model_adapter.dart";
+import "data/models/review_model.dart";
+import "data/models/review_model_adapter.dart";
+import "data/models/reading_list_model.dart";
+import "data/models/reading_list_model_adapter.dart";
+import "data/models/bookmark_model.dart";
+import "data/models/bookmark_model_adapter.dart";
+import "data/models/note_model.dart";
+import "data/models/note_model_adapter.dart";
+import "data/models/reading_progress_model.dart";
+import "data/models/reading_progress_model_adapter.dart";
+import "data/models/reading_goal_model.dart";
+import "data/models/reading_goal_model_adapter.dart";
+import "core/constants/app_constants.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +29,7 @@ Future<void> main() async {
   await Firebase.initializeApp();
 
   await Hive.initFlutter();
+  Hive.registerAdapter(BookFormatAdapter());
   Hive.registerAdapter(BookModelAdapter());
   Hive.registerAdapter(CollectionModelAdapter());
   Hive.registerAdapter(UserModelAdapter());

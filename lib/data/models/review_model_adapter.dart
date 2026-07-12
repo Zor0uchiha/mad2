@@ -1,4 +1,4 @@
-part of "review_model.dart";
+import "package:hive/hive.dart";
 
 class ReviewModelAdapter extends TypeAdapter<ReviewModel> {
   @override final int typeId = 4;

@@ -1,7 +1,21 @@
-part of "book_model.dart";
+import "package:hive/hive.dart";
+
+class BookFormatAdapter extends TypeAdapter<BookFormat> {
+  @override final int typeId = 0;
+
+  @override
+  BookFormat read(BinaryReader reader) {
+    return BookFormat.values[reader.readByte()];
+  }
+
+  @override
+  void write(BinaryWriter writer, BookFormat obj) {
+    writer.writeByte(obj.index);
+  }
+}
 
 class BookModelAdapter extends TypeAdapter<BookModel> {
-  @override final int typeId = 0;
+  @override final int typeId = 1;
 
   @override
   BookModel read(BinaryReader reader) {

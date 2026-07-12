@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "../core/constants/app_constants.dart";
-import "../../data/services/settings_service.dart";
+import "../constants/app_constants.dart";
 import "../../features/splash/splash_screen.dart";
 import "../../features/onboarding/onboarding_screen.dart";
 import "../../features/auth/auth_screen.dart";

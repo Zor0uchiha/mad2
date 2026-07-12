@@ -1,4 +1,4 @@
-part of "bookmark_model.dart";
+import "package:hive/hive.dart";
 
 class BookmarkModelAdapter extends TypeAdapter<BookmarkModel> {
   @override final int typeId = 6;

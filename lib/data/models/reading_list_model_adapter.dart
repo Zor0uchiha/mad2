@@ -1,4 +1,4 @@
-part of "reading_list_model.dart";
+import "package:hive/hive.dart";
 
 class ReadingListModelAdapter extends TypeAdapter<ReadingListModel> {
   @override final int typeId = 5;
