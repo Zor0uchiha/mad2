@@ -19,6 +19,8 @@ def patch_file(filepath, replacements, multiline_replacements=None):
 patch_file("android/app/build.gradle", [
     (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 35'),
     (r'compileSdk\s+\d+', 'compileSdk = 35'),
+    (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23'),
+    (r'minSdkVersion\s+\d+', 'minSdkVersion 23'),
     (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),
 ], [
     ('compileOptions {', 'compileOptions {\n        coreLibraryDesugaringEnabled true'),
