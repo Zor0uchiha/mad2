@@ -21,7 +21,7 @@ patch_file("android/app/build.gradle", [
     (r'compileSdk\s+\d+', 'compileSdk = 35'),
     (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),
 ], [
-    ('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'),
+    ('compileOptions {', 'compileOptions {\n        coreLibraryDesugaringEnabled true'),
 ])
 
 # Add desugar_jdk_libs dependency to android/app/build.gradle
