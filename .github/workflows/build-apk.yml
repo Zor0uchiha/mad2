@@ -29,14 +29,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
+      - name: Create asset directories
+        run: mkdir -p assets/images assets/icons assets/fonts
+
       - name: Create Flutter project files
         run: flutter create .
 
-      - name: Patch Android SDK and Kotlin version
+      - name: Patch Android SDK, AGP, and Kotlin version
         run: |
-          sed -i 's/compileSdk [0-9]\+/compileSdk 35/' android/app/build.gradle || true
-          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' android/app/build.gradle || true
-          sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '2.0.0'/" android/build.gradle || true
+          # Set compileSdk to 35 (override flutter.compileSdkVersion)
+          sed -i "s/compileSdk = flutter.compileSdkVersion/compileSdk = 35/" android/app/build.gradle || true
+          sed -i "s/compileSdk [0-9]\+/compileSdk = 35/" android/app/build.gradle || true
+          # Update AGP to 8.7.3 for compatibility with compileSdk 35
+          sed -i "s/com\.android\.tools\.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.7.3/" android/build.gradle || true
+          # Update Kotlin version
+          sed -i "s/ext\.kotlin_version = '[^']*'/ext.kotlin_version = '2.0.21'/" android/build.gradle || true
+          # Update gradle wrapper for AGP 8.7.x
+          sed -i "s|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip|" android/gradle/wrapper/gradle-wrapper.properties || true
 
       - name: Get dependencies
         run: flutter pub get
