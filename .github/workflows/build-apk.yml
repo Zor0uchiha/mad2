@@ -29,6 +29,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
+      - name: Create Flutter project files
+        run: flutter create .
+
       - name: Get dependencies
         run: flutter pub get
 
