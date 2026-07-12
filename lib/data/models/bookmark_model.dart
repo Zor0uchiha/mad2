@@ -1,29 +1,17 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 6)
-class BookmarkModel extends HiveObject {
-  @HiveField(0)
+class BookmarkModel {
   String id;
-
-  @HiveField(1)
   String bookId;
-
-  @HiveField(2)
+  String bookTitle;
   String title;
-
-  @HiveField(3)
   int pageIndex;
-
-  @HiveField(4)
   String? note;
-
-  @HiveField(5)
   DateTime createdAt;
 
   BookmarkModel({
     required this.id,
     required this.bookId,
-    this.title = "",
+    this.bookTitle = '',
+    this.title = '',
     required this.pageIndex,
     this.note,
     required this.createdAt,
@@ -32,6 +20,7 @@ class BookmarkModel extends HiveObject {
   BookmarkModel copyWith({
     String? id,
     String? bookId,
+    String? bookTitle,
     String? title,
     int? pageIndex,
     String? note,
@@ -40,6 +29,7 @@ class BookmarkModel extends HiveObject {
     return BookmarkModel(
       id: id ?? this.id,
       bookId: bookId ?? this.bookId,
+      bookTitle: bookTitle ?? this.bookTitle,
       title: title ?? this.title,
       pageIndex: pageIndex ?? this.pageIndex,
       note: note ?? this.note,

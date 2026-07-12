@@ -1,10 +1,9 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "../../core/providers.dart";
+import "package:shared_preferences/shared_preferences.dart";
 import "../../core/constants/app_constants.dart";
-import "../../data/services/settings_service.dart";
-import "../../data/services/auth_service.dart";
+import "../../core/providers.dart";
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -21,11 +20,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _initialize() async {
-    await Future.delayed(const Duration(milliseconds: AppConstants.splashDelayMs));
+    await Future.delayed(Duration(milliseconds: AppConstants.splashDelayMs));
     if (!mounted) return;
-    final hasCompletedOnboarding = ref.read(settingsServiceProvider).hasCompletedOnboarding;
-    if (hasCompletedOnboarding) {
-      context.go(AppConstants.routeHome);
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final onboardingComplete = prefs.getBool("onboarding_complete") ?? false;
+    if (!mounted) return;
+    if (onboardingComplete) {
+      final user = await ref.read(authServiceProvider).currentUser;
+      if (!mounted) return;
+      context.go(user != null ? AppConstants.routeHome : AppConstants.routeAuth);
     } else {
       context.go(AppConstants.routeOnboarding);
     }
@@ -33,6 +36,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: Center(
         child: Column(
@@ -42,17 +46,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(24),
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(28),
               ),
-              child: const Icon(Icons.menu_book_rounded, size: 64, color: Colors.white),
+              child: Icon(
+                Icons.menu_book_rounded,
+                size: 64,
+                color: theme.colorScheme.onPrimary,
+              ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Text(
               AppConstants.appName,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 48),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ],
         ),

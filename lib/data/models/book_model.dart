@@ -1,76 +1,43 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 0)
 enum BookFormat {
-  @HiveField(0)
   pdf,
-  @HiveField(1)
   epub;
 
   String get displayName => name.toUpperCase();
+
+  static BookFormat fromString(String value) {
+    switch (value.toLowerCase()) {
+      case 'pdf':
+        return BookFormat.pdf;
+      case 'epub':
+        return BookFormat.epub;
+      default:
+        return BookFormat.pdf;
+    }
+  }
 }
 
-@HiveType(typeId: 1)
-class BookModel extends HiveObject {
-  @HiveField(0)
+class BookModel {
   String id;
-
-  @HiveField(1)
   String title;
-
-  @HiveField(2)
   String author;
-
-  @HiveField(3)
   String? description;
-
-  @HiveField(4)
   String? coverPath;
-
-  @HiveField(5)
   String? filePath;
-
-  @HiveField(6)
   BookFormat format;
-
-  @HiveField(7)
   int pageCount;
-
-  @HiveField(8)
   int currentPage;
-
-  @HiveField(9)
   double progress;
-
-  @HiveField(10)
   List<String> tags;
-
-  @HiveField(11)
   bool isFavorite;
-
-  @HiveField(12)
   DateTime? lastOpenedAt;
-
-  @HiveField(13)
   DateTime createdAt;
-
-  @HiveField(14)
   DateTime updatedAt;
-
-  @HiveField(15)
   String? isbn;
-
-  @HiveField(16)
   String? publisher;
-
-  @HiveField(17)
   String? language;
-
-  @HiveField(18)
   DateTime? publishedDate;
-
-  @HiveField(19)
   List<String> collectionIds;
+  String? onlineBookId;
 
   BookModel({
     required this.id,
@@ -93,6 +60,7 @@ class BookModel extends HiveObject {
     this.language,
     this.publishedDate,
     this.collectionIds = const [],
+    this.onlineBookId,
   });
 
   BookModel copyWith({
@@ -116,6 +84,7 @@ class BookModel extends HiveObject {
     String? language,
     DateTime? publishedDate,
     List<String>? collectionIds,
+    String? onlineBookId,
   }) {
     return BookModel(
       id: id ?? this.id,
@@ -138,6 +107,7 @@ class BookModel extends HiveObject {
       language: language ?? this.language,
       publishedDate: publishedDate ?? this.publishedDate,
       collectionIds: collectionIds ?? this.collectionIds,
+      onlineBookId: onlineBookId ?? this.onlineBookId,
     );
   }
 }

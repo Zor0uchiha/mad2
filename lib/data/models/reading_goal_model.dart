@@ -1,37 +1,28 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 9)
-class ReadingGoalModel extends HiveObject {
-  @HiveField(0)
-  int booksPerYear;
-
-  @HiveField(1)
-  int pagesPerYear;
-
-  @HiveField(2)
-  int minutesPerDay;
-
-  @HiveField(3)
-  DateTime updatedAt;
+class ReadingGoalModel {
+  String id;
+  int targetBooks;
+  int targetPages;
+  int targetMinutes;
+  DateTime startDate;
+  DateTime endDate;
+  int currentBooks;
+  int currentPages;
+  int currentMinutes;
 
   ReadingGoalModel({
-    this.booksPerYear = 12,
-    this.pagesPerYear = 3650,
-    this.minutesPerDay = 20,
-    required this.updatedAt,
+    required this.id,
+    this.targetBooks = 0,
+    this.targetPages = 0,
+    this.targetMinutes = 0,
+    required this.startDate,
+    required this.endDate,
+    this.currentBooks = 0,
+    this.currentPages = 0,
+    this.currentMinutes = 0,
   });
 
-  ReadingGoalModel copyWith({
-    int? booksPerYear,
-    int? pagesPerYear,
-    int? minutesPerDay,
-    DateTime? updatedAt,
-  }) {
-    return ReadingGoalModel(
-      booksPerYear: booksPerYear ?? this.booksPerYear,
-      pagesPerYear: pagesPerYear ?? this.pagesPerYear,
-      minutesPerDay: minutesPerDay ?? this.minutesPerDay,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+  double get booksProgress => targetBooks > 0 ? currentBooks / targetBooks : 0;
+  double get pagesProgress => targetPages > 0 ? currentPages / targetPages : 0;
+  double get minutesProgress => targetMinutes > 0 ? currentMinutes / targetMinutes : 0;
+  double get overallProgress => (booksProgress + pagesProgress + minutesProgress) / 3;
 }

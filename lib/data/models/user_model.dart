@@ -1,33 +1,15 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 3)
-class UserModel extends HiveObject {
-  @HiveField(0)
+class UserModel {
   String uid;
-
-  @HiveField(1)
   String email;
-
-  @HiveField(2)
   String? displayName;
-
-  @HiveField(3)
   String? photoUrl;
-
-  @HiveField(4)
   String? bio;
-
-  @HiveField(5)
   DateTime? createdAt;
-
-  @HiveField(6)
   bool isAnonymous;
-
-  @HiveField(7)
   bool isPublicProfile;
-
-  @HiveField(8)
   DateTime updatedAt;
+  int booksRead;
+  int readingStreak;
 
   UserModel({
     required this.uid,
@@ -39,6 +21,8 @@ class UserModel extends HiveObject {
     this.isAnonymous = false,
     this.isPublicProfile = true,
     required this.updatedAt,
+    this.booksRead = 0,
+    this.readingStreak = 0,
   });
 
   UserModel copyWith({
@@ -51,6 +35,8 @@ class UserModel extends HiveObject {
     bool? isAnonymous,
     bool? isPublicProfile,
     DateTime? updatedAt,
+    int? booksRead,
+    int? readingStreak,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -62,6 +48,8 @@ class UserModel extends HiveObject {
       isAnonymous: isAnonymous ?? this.isAnonymous,
       isPublicProfile: isPublicProfile ?? this.isPublicProfile,
       updatedAt: updatedAt ?? this.updatedAt,
+      booksRead: booksRead ?? this.booksRead,
+      readingStreak: readingStreak ?? this.readingStreak,
     );
   }
 }

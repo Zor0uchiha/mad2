@@ -11,7 +11,6 @@ class AppConstants {
   static const double defaultPadding = 16.0;
   static const double defaultRadius = 12.0;
   static const double defaultCardRadius = 16.0;
-  static const double defaultElevation = 0.0;
 
   static const String hiveBoxBooks = "books";
   static const String hiveBoxCollections = "collections";
@@ -22,6 +21,7 @@ class AppConstants {
   static const String hiveBoxReviews = "reviews";
   static const String hiveBoxUserProfile = "user_profile";
   static const String hiveBoxReadingProgress = "reading_progress";
+  static const String hiveBoxReadingGoals = "reading_goals";
   static const String hiveBoxSyncQueue = "sync_queue";
 
   static const String routeSplash = "/splash";
@@ -31,6 +31,7 @@ class AppConstants {
   static const String routeLibrary = "/library";
   static const String routeReader = "/reader";
   static const String routeCollections = "/collections";
+  static const String routeCollectionDetail = "/collection";
   static const String routeBrowse = "/browse";
   static const String routeBookDetail = "/book-detail";
   static const String routeProfile = "/profile";
@@ -38,4 +39,8 @@ class AppConstants {
   static const String routeStatistics = "/statistics";
   static const String routeSettings = "/settings";
   static const String routeShare = "/share";
+  static const String routeBookmarks = "/bookmarks";
+  static const String routeReadingLists = "/reading-lists";
+  static const String routeReadingListDetail = "/reading-list";
+  static const String routeReviews = "/reviews";
 }

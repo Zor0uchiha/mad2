@@ -1,15 +1,25 @@
-import "dart:developer" as dev;
-
 class Logger {
-  static void d(String message, [String? tag]) {
-    dev.log(message, name: tag ?? "Bookstr");
+  static void info(String message) {
+    // ignore: avoid_print
+    print("[INFO] $message");
   }
 
-  static void e(String message, [Object? error, StackTrace? stackTrace, String? tag]) {
-    dev.log(message, name: tag ?? "Bookstr", error: error, stackTrace: stackTrace);
+  static void warning(String message) {
+    // ignore: avoid_print
+    print("[WARNING] $message");
   }
 
-  static void w(String message, [String? tag]) {
-    dev.log("WARNING: $message", name: tag ?? "Bookstr");
+  static void error(String message, [dynamic error, StackTrace? stackTrace]) {
+    // ignore: avoid_print
+    print("[ERROR] $message${error != null ? ": $error" : ""}");
+    if (stackTrace != null) {
+      // ignore: avoid_print
+      print(stackTrace);
+    }
+  }
+
+  static void debug(String message) {
+    // ignore: avoid_print
+    print("[DEBUG] $message");
   }
 }

@@ -1,26 +1,10 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 8)
-class ReadingProgressModel extends HiveObject {
-  @HiveField(0)
+class ReadingProgressModel {
   String id;
-
-  @HiveField(1)
   String bookId;
-
-  @HiveField(2)
   int currentPage;
-
-  @HiveField(3)
   double progressPercentage;
-
-  @HiveField(4)
   int? totalPages;
-
-  @HiveField(5)
   DateTime lastReadAt;
-
-  @HiveField(6)
   int? readingTimeMinutes;
 
   ReadingProgressModel({

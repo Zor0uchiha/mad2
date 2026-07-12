@@ -1,35 +1,13 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 5)
-class ReadingListModel extends HiveObject {
-  @HiveField(0)
+class ReadingListModel {
   String id;
-
-  @HiveField(1)
   String title;
-
-  @HiveField(2)
   String? description;
-
-  @HiveField(3)
   String? coverUrl;
-
-  @HiveField(4)
   String userId;
-
-  @HiveField(5)
   List<String> bookIds;
-
-  @HiveField(6)
   bool isPublic;
-
-  @HiveField(7)
   int sortOrder;
-
-  @HiveField(8)
   DateTime createdAt;
-
-  @HiveField(9)
   DateTime updatedAt;
 
   ReadingListModel({

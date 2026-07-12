@@ -1,33 +1,14 @@
-import "package:flutter/material.dart";
-import "package:hive/hive.dart";
+import 'package:flutter/material.dart';
 
-@HiveType(typeId: 2)
-class CollectionModel extends HiveObject {
-  @HiveField(0)
+class CollectionModel {
   String id;
-
-  @HiveField(1)
   String name;
-
-  @HiveField(2)
   String? description;
-
-  @HiveField(3)
   String? iconName;
-
-  @HiveField(4)
   int colorValue;
-
-  @HiveField(5)
   List<String> bookIds;
-
-  @HiveField(6)
   int sortOrder;
-
-  @HiveField(7)
   DateTime createdAt;
-
-  @HiveField(8)
   DateTime updatedAt;
 
   CollectionModel({

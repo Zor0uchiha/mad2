@@ -1,41 +1,17 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 4)
-class ReviewModel extends HiveObject {
-  @HiveField(0)
+class ReviewModel {
   String id;
-
-  @HiveField(1)
   String userId;
-
-  @HiveField(2)
   String userName;
-
-  @HiveField(3)
   String bookId;
-
-  @HiveField(4)
+  String bookTitle;
+  String? bookCoverUrl;
   double rating;
-
-  @HiveField(5)
   String text;
-
-  @HiveField(6)
   bool hasSpoiler;
-
-  @HiveField(7)
   List<String> tags;
-
-  @HiveField(8)
   DateTime? readingDate;
-
-  @HiveField(9)
   bool isPublic;
-
-  @HiveField(10)
   DateTime createdAt;
-
-  @HiveField(11)
   DateTime updatedAt;
 
   ReviewModel({
@@ -43,8 +19,10 @@ class ReviewModel extends HiveObject {
     required this.userId,
     required this.userName,
     required this.bookId,
+    this.bookTitle = '',
+    this.bookCoverUrl,
     this.rating = 0,
-    this.text = "",
+    this.text = '',
     this.hasSpoiler = false,
     this.tags = const [],
     this.readingDate,
@@ -58,6 +36,8 @@ class ReviewModel extends HiveObject {
     String? userId,
     String? userName,
     String? bookId,
+    String? bookTitle,
+    String? bookCoverUrl,
     double? rating,
     String? text,
     bool? hasSpoiler,
@@ -72,6 +52,8 @@ class ReviewModel extends HiveObject {
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       bookId: bookId ?? this.bookId,
+      bookTitle: bookTitle ?? this.bookTitle,
+      bookCoverUrl: bookCoverUrl ?? this.bookCoverUrl,
       rating: rating ?? this.rating,
       text: text ?? this.text,
       hasSpoiler: hasSpoiler ?? this.hasSpoiler,

@@ -1,5 +1,3 @@
-import "dart:convert";
-
 class OnlineBookModel {
   final String id;
   final String title;
@@ -32,46 +30,27 @@ class OnlineBookModel {
   });
 
   factory OnlineBookModel.fromJson(Map<String, dynamic> json) {
-    final volumeInfo = json["volumeInfo"] as Map<String, dynamic>? ?? {};
-    final identifiers = volumeInfo["industryIdentifiers"] as List<dynamic>? ?? [];
+    final volumeInfo = json['volumeInfo'] as Map<String, dynamic>? ?? {};
+    final identifiers = volumeInfo['industryIdentifiers'] as List<dynamic>? ?? [];
     final isbn13 = identifiers.cast<Map<String, dynamic>?>().firstWhere(
-          (id) => id != null && id["type"] == "ISBN_13",
+          (id) => id != null && id['type'] == 'ISBN_13',
           orElse: () => null,
         );
-    final saleInfo = json["saleInfo"] as Map<String, dynamic>? ?? {};
 
     return OnlineBookModel(
-      id: json["id"] as String? ?? "",
-      title: volumeInfo["title"] as String? ?? "Unknown Title",
-      authors: (volumeInfo["authors"] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
-      description: volumeInfo["description"] as String?,
-      thumbnail: (volumeInfo["imageLinks"] as Map<String, dynamic>?)?["thumbnail"] as String?,
-      pageCount: volumeInfo["pageCount"] as int?,
-      publisher: volumeInfo["publisher"] as String?,
-      publishedDate: volumeInfo["publishedDate"] as String?,
-      categories: (volumeInfo["categories"] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
-      language: volumeInfo["language"] as String?,
-      isbn: isbn13?["identifier"] as String?,
-      averageRating: (volumeInfo["averageRating"] as num?)?.toDouble(),
-      ratingsCount: volumeInfo["ratingsCount"] as int?,
+      id: json['id'] as String? ?? '',
+      title: volumeInfo['title'] as String? ?? 'Unknown Title',
+      authors: (volumeInfo['authors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      description: volumeInfo['description'] as String?,
+      thumbnail: (volumeInfo['imageLinks'] as Map<String, dynamic>?)?['thumbnail'] as String?,
+      pageCount: volumeInfo['pageCount'] as int?,
+      publisher: volumeInfo['publisher'] as String?,
+      publishedDate: volumeInfo['publishedDate'] as String?,
+      categories: (volumeInfo['categories'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      language: volumeInfo['language'] as String?,
+      isbn: isbn13?['identifier'] as String?,
+      averageRating: (volumeInfo['averageRating'] as num?)?.toDouble(),
+      ratingsCount: volumeInfo['ratingsCount'] as int?,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      "id": id,
-      "title": title,
-      "authors": authors,
-      "description": description,
-      "thumbnail": thumbnail,
-      "pageCount": pageCount,
-      "publisher": publisher,
-      "publishedDate": publishedDate,
-      "categories": categories,
-      "language": language,
-      "isbn": isbn,
-      "averageRating": averageRating,
-      "ratingsCount": ratingsCount,
-    };
   }
 }

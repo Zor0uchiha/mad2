@@ -1,30 +1,18 @@
-import "package:hive/hive.dart";
-
-@HiveType(typeId: 7)
-class NoteModel extends HiveObject {
-  @HiveField(0)
+class NoteModel {
   String id;
-
-  @HiveField(1)
   String bookId;
-
-  @HiveField(2)
+  String bookTitle;
   int pageIndex;
-
-  @HiveField(3)
   String text;
-
-  @HiveField(4)
   DateTime createdAt;
-
-  @HiveField(5)
   DateTime updatedAt;
 
   NoteModel({
     required this.id,
     required this.bookId,
+    this.bookTitle = '',
     required this.pageIndex,
-    this.text = "",
+    this.text = '',
     required this.createdAt,
     required this.updatedAt,
   });
@@ -32,6 +20,7 @@ class NoteModel extends HiveObject {
   NoteModel copyWith({
     String? id,
     String? bookId,
+    String? bookTitle,
     int? pageIndex,
     String? text,
     DateTime? createdAt,
@@ -40,6 +29,7 @@ class NoteModel extends HiveObject {
     return NoteModel(
       id: id ?? this.id,
       bookId: bookId ?? this.bookId,
+      bookTitle: bookTitle ?? this.bookTitle,
       pageIndex: pageIndex ?? this.pageIndex,
       text: text ?? this.text,
       createdAt: createdAt ?? this.createdAt,

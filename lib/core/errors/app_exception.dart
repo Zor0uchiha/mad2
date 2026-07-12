@@ -33,3 +33,8 @@ class ValidationException extends AppException {
   const ValidationException(String message, {String? code, dynamic originalError})
       : super(message, code: code, originalError: originalError);
 }
+
+class BookNotFoundException extends AppException {
+  const BookNotFoundException(String message, {String? code, dynamic originalError})
+      : super(message, code: code, originalError: originalError);
+}

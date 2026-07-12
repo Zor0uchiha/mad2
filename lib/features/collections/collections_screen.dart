@@ -1,10 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "../../core/providers.dart";
-import "../../core/constants/app_constants.dart";
-import "../../data/models/collection_model.dart";
-import "../../data/repositories/local_repositories.dart";
-import "../../data/models/book_model.dart";
+import "package:go_router/go_router.dart";
+import "package:bookstr/core/providers.dart";
+import "package:bookstr/core/constants/app_constants.dart";
+import "package:bookstr/core/theme/app_colors.dart";
+import "package:bookstr/data/models/collection_model.dart";
+import "package:bookstr/data/repositories/local_repositories.dart";
+import "package:bookstr/features/collections/widgets/collection_card.dart";
 
 class CollectionsScreen extends ConsumerStatefulWidget {
   const CollectionsScreen({super.key});
@@ -14,19 +16,94 @@ class CollectionsScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
-  final TextEditingController _nameController = TextEditingController();
+  void _showCreateDialog() {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    int selectedColor = AppColors.collectionColors[0].value;
+    String selectedIcon = "folder";
 
-  Future<void> _createCollection() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) return;
-    final repo = ref.read(collectionsProvider);
-    await repo.addCollection(CollectionModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
-    _nameController.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("New Collection"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: "Name",
+                    hintText: "Collection name",
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: "Description",
+                    hintText: "Optional description",
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children: AppColors.collectionColors.map((c) {
+                    final isSelected = c.value == selectedColor;
+                    return GestureDetector(
+                      onTap: () => setDialogState(() => selectedColor = c.value),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: Colors.white, width: 3)
+                              : null,
+                          boxShadow: isSelected
+                              ? [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 8)]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check, color: Colors.white, size: 18)
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text("Cancel"),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                final repo = ref.read(collectionsProvider);
+                await repo.addCollection(CollectionModel(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  name: name,
+                  description: descController.text.trim(),
+                  colorValue: selectedColor,
+                  iconName: selectedIcon,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ));
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: const Text("Create"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -36,33 +113,45 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Collections")),
       body: collections.isEmpty
-          ? Center(child: Text("No collections yet", style: Theme.of(context).textTheme.bodyLarge))
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.collections_bookmark_rounded,
+                      size: 64, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text("No collections yet",
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text("Create your first collection to organize books",
+                      style: Theme.of(context).textTheme.bodyMedium),
+                ],
+              ),
+            )
           : GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.8, crossAxisSpacing: 12, mainAxisSpacing: 12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.9,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
               itemCount: collections.length,
               itemBuilder: (context, index) {
-                final col = collections[index];
-                return GestureDetector(
-                  onTap: () {},
-                  child: Card(
-                    color: Color(col.colorValue),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.folder_rounded, size: 48, color: Colors.white),
-                          const SizedBox(height: 12),
-                          Text(col.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          Text("${col.bookCount} books", style: TextStyle(color: Colors.white.withAlpha(200))),
-                        ]),
-                      ),
-                    ),
+                final collection = collections[index];
+                return CollectionCard(
+                  collection: collection,
+                  onTap: () => context.push(
+                    "${AppConstants.routeCollectionDetail}/${collection.id}",
                   ),
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _createCollection, icon: const Icon(Icons.add_rounded), label: const Text("New Collection")),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showCreateDialog,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text("New Collection"),
+      ),
     );
   }
 }

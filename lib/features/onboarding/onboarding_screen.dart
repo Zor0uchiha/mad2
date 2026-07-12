@@ -1,9 +1,9 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "../../core/providers.dart";
+import "package:shared_preferences/shared_preferences.dart";
 import "../../core/constants/app_constants.dart";
-import "../../data/services/settings_service.dart";
+import "../../core/providers.dart";
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -16,46 +16,79 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingPage> _pages = [
-    OnboardingPage(
-      icon: Icons.lock_rounded,
-      title: "Your books remain on your device",
-      description: "We never upload your personal PDF or EPUB files. Your library stays private.",
-    ),
-    OnboardingPage(
+  final List<_OnboardingPageData> _pages = [
+    _OnboardingPageData(
       icon: Icons.privacy_tip_rounded,
-      title: "We respect your privacy",
-      description: "Metadata sync is opt-in only. Control exactly what you share.",
+      title: "Privacy First",
+      description:
+          "Your personal PDFs and EPUBs never leave your device. We respect your privacy — no uploads, no tracking.",
     ),
-    OnboardingPage(
+    _OnboardingPageData(
       icon: Icons.wifi_off_rounded,
-      title: "Works completely offline",
-      description: "Read, bookmark, and organize without internet. Online features enhance the experience.",
+      title: "Works Offline",
+      description:
+          "Read, bookmark, highlight, and organize your library even without an internet connection.",
     ),
-    OnboardingPage(
+    _OnboardingPageData(
       icon: Icons.library_books_rounded,
-      title: "Organize your digital library",
-      description: "Create collections, add tags, and manage your books your way.",
+      title: "Organize Your Library",
+      description:
+          "Create collections, tag your books, sort by author or genre — build your perfect digital library.",
     ),
-    OnboardingPage(
-      icon: Icons.public_rounded,
-      title: "Discover new books legally",
-      description: "Browse an online catalog of public and legal book metadata.",
+    _OnboardingPageData(
+      icon: Icons.explore_rounded,
+      title: "Discover Books",
+      description:
+          "Browse our catalog of legally available books and add them to your reading list with one tap.",
+    ),
+    _OnboardingPageData(
+      icon: Icons.sync_rounded,
+      title: "Sync Across Devices",
+      description:
+          "Optional cloud sync keeps your reading progress, bookmarks, and library up to date everywhere.",
     ),
   ];
 
+  Future<void> _completeOnboarding() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setBool("onboarding_complete", true);
+    if (!mounted) return;
+    final user = await ref.read(authServiceProvider).currentUser;
+    if (!mounted) return;
+    if (user != null) {
+      context.go(AppConstants.routeHome);
+    } else {
+      context.go(AppConstants.routeAuth);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: TextButton(
+                  onPressed: _completeOnboarding,
+                  child: const Text("Skip"),
+                ),
+              ),
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
-                  onPageChanged: (index) => setState(() => _currentPage = index),
+                  onPageChanged: (index) =>
+                      setState(() => _currentPage = index),
                   itemCount: _pages.length,
                   itemBuilder: (context, index) {
                     final page = _pages[index];
@@ -66,15 +99,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           width: 160,
                           height: 160,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
+                            color: theme.colorScheme.primaryContainer,
                             borderRadius: BorderRadius.circular(32),
                           ),
-                          child: Icon(page.icon, size: 80, color: Theme.of(context).colorScheme.primary),
+                          child: Icon(
+                            page.icon,
+                            size: 80,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
-                        const SizedBox(height: 48),
-                        Text(page.title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        Text(page.description, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                        SizedBox(height: 48),
+                        Text(
+                          page.title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          page.description,
+                          style: theme.textTheme.bodyLarge,
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     );
                   },
@@ -83,13 +130,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton(
-                    onPressed: () {
-                      ref.read(settingsServiceProvider).setOnboardingComplete();
-                      context.go(AppConstants.routeHome);
-                    },
-                    child: const Text("Skip"),
-                  ),
+                  const SizedBox(width: 72),
                   Row(
                     children: List.generate(_pages.length, (index) {
                       return AnimatedContainer(
@@ -99,27 +140,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: _currentPage == index
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outline,
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
                     }),
                   ),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: () {
                       if (_currentPage < _pages.length - 1) {
-                        _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
                       } else {
-                        ref.read(settingsServiceProvider).setOnboardingComplete();
-                        context.go(AppConstants.routeHome);
+                        _completeOnboarding();
                       }
                     },
-                    child: Text(_currentPage < _pages.length - 1 ? "Next" : "Get Started"),
+                    child: Text(
+                      _currentPage < _pages.length - 1 ? "Next" : "Get Started",
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 16),
             ],
           ),
         ),
@@ -128,9 +173,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
-class OnboardingPage {
+class _OnboardingPageData {
   final IconData icon;
   final String title;
   final String description;
-  OnboardingPage({required this.icon, required this.title, required this.description});
+  const _OnboardingPageData({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 }
