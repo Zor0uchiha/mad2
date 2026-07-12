@@ -2,16 +2,20 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:firebase_auth/firebase_auth.dart";
 import "package:hive_flutter/hive_flutter.dart";
 import "package:shared_preferences/shared_preferences.dart";
-import "../network/api_client.dart";
-import "../constants/app_constants.dart";
-import "../models/book_model.dart";
-import "../models/collection_model.dart";
-import "../models/review_model.dart";
-import "../models/reading_list_model.dart";
-import "../services/auth_service.dart";
-import "../services/online_book_service.dart";
-import "../services/settings_service.dart";
-import "../services/notification_service.dart";
+import "package:flutter/material.dart";
+import "network/api_client.dart";
+import "constants/app_constants.dart";
+import "../data/models/book_model.dart";
+import "../data/models/collection_model.dart";
+import "../data/models/review_model.dart";
+import "../data/models/reading_list_model.dart";
+import "../data/models/bookmark_model.dart";
+import "../data/models/note_model.dart";
+import "../data/models/reading_progress_model.dart";
+import "../data/services/auth_service.dart";
+import "../data/services/online_book_service.dart";
+import "../data/services/settings_service.dart";
+import "../data/services/notification_service.dart";
 import "../../data/repositories/local_repositories.dart";
 import "../../data/repositories/reading_repositories.dart";
 
@@ -66,4 +70,9 @@ final reviewsProvider = Provider<dynamic>((ref) {
 
 final readingListsProvider = Provider<dynamic>((ref) {
   return Hive.box<ReadingListModel>(AppConstants.hiveBoxReadingLists);
+});
+
+final themeModeProvider = StateProvider<ThemeMode>((ref) {
+  final settings = ref.watch(settingsServiceProvider);
+  return settings.themeMode;
 });

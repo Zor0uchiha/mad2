@@ -34,6 +34,7 @@ jobs:
 
       - name: Patch Android SDK and Kotlin version
         run: |
+          sed -i 's/compileSdk [0-9]\+/compileSdk 35/' android/app/build.gradle || true
           sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' android/app/build.gradle || true
           sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '2.0.0'/" android/build.gradle || true
 

@@ -11,8 +11,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final books = ref.watch(booksProvider);
-    final collections = ref.watch(collectionsProvider);
+    final books = ref.watch(booksProvider).getAllBooks();
+    final collections = ref.watch(collectionsProvider).getAllCollections();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Bookstr"), actions: [

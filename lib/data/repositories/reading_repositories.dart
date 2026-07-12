@@ -1,5 +1,5 @@
 import "package:hive_flutter/hive_flutter.dart";
-import "../constants/app_constants.dart";
+import "../../core/constants/app_constants.dart";
 import "../models/reading_progress_model.dart";
 import "../models/bookmark_model.dart";
 import "../models/note_model.dart";

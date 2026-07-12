@@ -75,4 +75,3 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
-}

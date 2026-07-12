@@ -3,9 +3,8 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "./core/theme/app_theme.dart";
 import "./core/constants/app_constants.dart";
 import "./core/navigation/router.dart";
-import "./data/services/settings_service.dart";
+import "./core/providers.dart";
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 final fontScaleProvider = StateProvider<double>((ref) => 1.0);
 final seedColorProvider = StateProvider<Color>((ref) => AppTheme.primaryLight);
 

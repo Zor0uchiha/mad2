@@ -2,6 +2,7 @@ import "package:hive_flutter/hive_flutter.dart";
 import "../models/book_model.dart";
 import "../models/collection_model.dart";
 import "../models/reading_progress_model.dart";
+import "../../core/constants/app_constants.dart";
 import "../../core/errors/app_exception.dart";
 
 class BookRepository {
