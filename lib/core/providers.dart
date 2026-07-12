@@ -15,7 +15,6 @@ import "../data/models/reading_progress_model.dart";
 import "../data/services/auth_service.dart";
 import "../data/services/online_book_service.dart";
 import "../data/services/settings_service.dart";
-import "../data/services/notification_service.dart";
 import "../../data/repositories/local_repositories.dart";
 import "../../data/repositories/reading_repositories.dart";
 
