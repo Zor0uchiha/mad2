@@ -1,4 +1,5 @@
 import "package:hive/hive.dart";
+import "reading_progress_model.dart";
 
 class ReadingProgressModelAdapter extends TypeAdapter<ReadingProgressModel> {
   @override final int typeId = 8;

@@ -1,4 +1,5 @@
 import "package:hive/hive.dart";
+import "reading_goal_model.dart";
 
 class ReadingGoalModelAdapter extends TypeAdapter<ReadingGoalModel> {
   @override final int typeId = 9;

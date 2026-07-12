@@ -1,5 +1,6 @@
 import "package:hive/hive.dart";
 import "package:flutter/material.dart";
+import "collection_model.dart";
 
 class CollectionModelAdapter extends TypeAdapter<CollectionModel> {
   @override final int typeId = 2;

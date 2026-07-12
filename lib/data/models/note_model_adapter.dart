@@ -1,4 +1,5 @@
 import "package:hive/hive.dart";
+import "note_model.dart";
 
 class NoteModelAdapter extends TypeAdapter<NoteModel> {
   @override final int typeId = 7;

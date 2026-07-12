@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:fl_chart/fl_chart.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
@@ -18,7 +17,6 @@ class StatisticsScreen extends ConsumerWidget {
     final totalBooks = books.length;
     final totalPages = books.fold<int>(0, (sum, b) => sum + b.currentPage);
     final totalTime = books.fold<int>(0, (sum, b) => sum + (b.currentPage * 2));
-    final favoriteGenre = "Fiction";
 
     return Scaffold(
       appBar: AppBar(title: const Text("Statistics")),
@@ -43,14 +41,14 @@ class StatisticsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Text("Monthly Reading", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          SizedBox(height: 200, child: BarChart(BarChartData(barGroups: List.generate(12, (i) => BarChartGroupData(x: i, barRods: [BarChartRodData(toY: (i + 1) * 3.0, color: Theme.of(context).colorScheme.primary)])))),
+          _MonthlyChart(primary: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 24),
           Text("Favorite Genres", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          Wrap(
+          const Wrap(
             spacing: 8,
             children: [
-              Chip(label: Text(favoriteGenre)),
+              Chip(label: Text("Fiction")),
               Chip(label: Text("Non-Fiction")),
               Chip(label: Text("Science Fiction")),
             ],
@@ -60,6 +58,36 @@ class StatisticsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           ListTile(title: Text(books.isNotEmpty ? books.first.author : "Unknown"), subtitle: Text("${books.where((b) => b.author == books.firstOrNull?.author).length} books")),
         ],
+      ),
+    );
+  }
+}
+
+class _MonthlyChart extends StatelessWidget {
+  final Color primary;
+  const _MonthlyChart({required this.primary});
+
+  @override
+  Widget build(BuildContext context) {
+    final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    final values = List.generate(12, (i) => (i + 1) * 2.0);
+    final max = values.reduce((a, b) => a > b ? a : b);
+
+    return SizedBox(
+      height: 200,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          barGroups: List.generate(months.length, (i) {
+            return BarChartGroupData(x: i, barRods: [BarChartRodData(toY: values[i], color: primary)]);
+          }),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
+              final index = value.toInt();
+              return Padding(padding: const EdgeInsets.only(top: 8), child: Text(index < months.length ? months[index] : "", style: const TextStyle(fontSize: 12)));
+            })),
+          ),
+        ),
       ),
     );
   }

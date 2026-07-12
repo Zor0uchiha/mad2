@@ -1,4 +1,5 @@
 import "package:hive/hive.dart";
+import "book_model.dart";
 
 class BookFormatAdapter extends TypeAdapter<BookFormat> {
   @override final int typeId = 0;

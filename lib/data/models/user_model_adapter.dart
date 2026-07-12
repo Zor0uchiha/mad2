@@ -1,4 +1,5 @@
 import "package:hive/hive.dart";
+import "user_model.dart";
 
 class UserModelAdapter extends TypeAdapter<UserModel> {
   @override final int typeId = 3;

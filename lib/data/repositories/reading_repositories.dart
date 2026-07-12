@@ -1,5 +1,9 @@
-import "../models/reading_progress_model.dart";
 import "package:hive_flutter/hive_flutter.dart";
+import "../constants/app_constants.dart";
+import "../models/reading_progress_model.dart";
+import "../models/bookmark_model.dart";
+import "../models/note_model.dart";
+import "../../core/errors/app_exception.dart";
 
 class ReadingProgressRepository {
   static const String boxName = AppConstants.hiveBoxReadingProgress;
