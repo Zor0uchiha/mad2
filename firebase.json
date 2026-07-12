@@ -1,0 +1,12 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "bookstr-app",
+          "appId": "com.bookstr.app"
+        }
+      }
+    }
+  }
+}
