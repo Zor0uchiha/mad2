@@ -32,6 +32,15 @@ jobs:
       - name: Create Flutter project files
         run: flutter create .
 
+      - name: Patch Android SDK and Kotlin version
+        run: |
+          if (Test-Path "android/app/build.gradle") {
+            (Get-Content "android/app/build.gradle") -replace 'compileSdkVersion \d+', 'compileSdkVersion 35' | Set-Content "android/app/build.gradle"
+          }
+          if (Test-Path "android/build.gradle") {
+            (Get-Content "android/build.gradle") -replace "ext.kotlin_version = '.+'", "ext.kotlin_version = '2.0.0'" | Set-Content "android/build.gradle"
+          }
+
       - name: Get dependencies
         run: flutter pub get
 
