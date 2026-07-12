@@ -35,21 +35,72 @@ jobs:
       - name: Create Flutter project files
         run: flutter create .
 
-      - name: Patch Android SDK, AGP, and Kotlin version
+      - name: Patch Android build files
         run: |
-          # Set compileSdk to 35 (override flutter.compileSdkVersion)
-          sed -i "s/compileSdk = flutter.compileSdkVersion/compileSdk = 35/" android/app/build.gradle || true
-          sed -i "s/compileSdk [0-9]\+/compileSdk = 35/" android/app/build.gradle || true
-          # Update AGP version (newer templates use plugins block in settings.gradle)
-          sed -i 's/"com.android.application" version "[^"]*"/"com.android.application" version "8.7.3"/' android/settings.gradle || true
-          # Fallback: old templates use classpath in build.gradle
-          sed -i 's/com\.android\.tools\.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.7.3/' android/build.gradle || true
-          # Update Kotlin version (newer templates: settings.gradle)
-          sed -i 's/org\.jetbrains\.kotlin\.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.0.21"/' android/settings.gradle || true
-          # Fallback: old templates use ext.kotlin_version in build.gradle
-          sed -i "s/ext\.kotlin_version = '[^']*'/ext.kotlin_version = '2.0.21'/" android/build.gradle || true
-          # Update gradle wrapper for AGP 8.7.x
-          sed -i "s|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip|" android/gradle/wrapper/gradle-wrapper.properties || true
+          python3 << 'PYEOF'
+import re, os
+
+# Patch android/app/build.gradle
+app_gradle = "android/app/build.gradle"
+with open(app_gradle) as f:
+    content = f.read()
+
+# 1. Set compileSdk to 35
+content = re.sub(r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 35', content)
+content = re.sub(r'compileSdk\s+\d+', 'compileSdk = 35', content)
+
+# 2. Set ndkVersion
+content = re.sub(r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"', content)
+
+# 3. Enable core library desugaring in compileOptions
+content = content.replace(
+    'compileOptions {',
+    'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'
+)
+
+# 4. Add desugar_jdk_libs dependency (only if not already present)
+if 'desugar_jdk_libs' not in content:
+    content = content.replace(
+        'dependencies {',
+        'dependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"'
+    )
+
+with open(app_gradle, 'w') as f:
+    f.write(content)
+print("Patched android/app/build.gradle")
+
+# Patch android/settings.gradle (newer template)
+settings_gradle = "android/settings.gradle"
+if os.path.exists(settings_gradle):
+    with open(settings_gradle) as f:
+        content = f.read()
+    content = re.sub(r'"com.android.application" version "[^"]*"', '"com.android.application" version "8.7.3"', content)
+    content = re.sub(r'org\.jetbrains\.kotlin\.android" version "[^"]*"', 'org.jetbrains.kotlin.android" version "2.0.21"', content)
+    with open(settings_gradle, 'w') as f:
+        f.write(content)
+    print("Patched android/settings.gradle")
+
+# Patch android/build.gradle (older template fallback)
+build_gradle = "android/build.gradle"
+if os.path.exists(build_gradle):
+    with open(build_gradle) as f:
+        content = f.read()
+    content = re.sub(r'com\.android\.tools\.build:gradle:[0-9.]+', 'com.android.tools.build:gradle:8.7.3', content)
+    content = re.sub(r"ext\.kotlin_version\s*=\s*'[^']*'", "ext.kotlin_version = '2.0.21'", content)
+    with open(build_gradle, 'w') as f:
+        f.write(content)
+    print("Patched android/build.gradle")
+
+# Patch gradle wrapper properties
+wrapper_props = "android/gradle/wrapper/gradle-wrapper.properties"
+if os.path.exists(wrapper_props):
+    with open(wrapper_props) as f:
+        content = f.read()
+    content = re.sub(r'distributionUrl=.*', 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip', content)
+    with open(wrapper_props, 'w') as f:
+        f.write(content)
+    print("Patched gradle-wrapper.properties")
+PYEOF
 
       - name: Get dependencies
         run: flutter pub get
