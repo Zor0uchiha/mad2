@@ -1,6 +1,5 @@
+import "package:flutter/material.dart";
 import "package:hive/hive.dart";
-
-part "collection_model.g.dart";
 
 @HiveType(typeId: 2)
 class CollectionModel extends HiveObject {

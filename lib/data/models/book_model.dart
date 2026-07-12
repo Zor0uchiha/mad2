@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "book_model.g.dart";
-
 @HiveType(typeId: 0)
 enum BookFormat {
   @HiveField(0)

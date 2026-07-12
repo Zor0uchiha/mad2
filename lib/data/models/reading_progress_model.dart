@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "reading_progress_model.g.dart";
-
 @HiveType(typeId: 8)
 class ReadingProgressModel extends HiveObject {
   @HiveField(0)

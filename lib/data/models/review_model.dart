@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "review_model.g.dart";
-
 @HiveType(typeId: 4)
 class ReviewModel extends HiveObject {
   @HiveField(0)

@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "reading_list_model.g.dart";
-
 @HiveType(typeId: 5)
 class ReadingListModel extends HiveObject {
   @HiveField(0)

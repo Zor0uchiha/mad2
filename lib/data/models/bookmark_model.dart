@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "bookmark_model.g.dart";
-
 @HiveType(typeId: 6)
 class BookmarkModel extends HiveObject {
   @HiveField(0)

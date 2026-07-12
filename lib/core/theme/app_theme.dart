@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter/services.dart";
 import "package:google_fonts/google_fonts.dart";
 
 class AppTheme {
@@ -44,7 +43,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+          side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -132,7 +131,7 @@ class AppTheme {
         color: colorScheme.surfaceContainerHighest,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+          side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

@@ -17,6 +17,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.4
+  shared_preferences: ^2.3.3
   permission_handler: ^11.3.1
   file_picker: ^8.1.6
   image_picker: ^1.1.2

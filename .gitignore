@@ -19,7 +19,6 @@ build/
 *.tgz
 
 # Flutter/Dart
-*.g.dart
 *.freezed.dart
 
 # Firebase

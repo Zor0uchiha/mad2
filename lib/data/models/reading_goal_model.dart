@@ -1,7 +1,5 @@
 import "package:hive/hive.dart";
 
-part "reading_goal_model.g.dart";
-
 @HiveType(typeId: 9)
 class ReadingGoalModel extends HiveObject {
   @HiveField(0)
