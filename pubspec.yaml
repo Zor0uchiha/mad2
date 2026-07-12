@@ -31,7 +31,6 @@ dependencies:
   share_plus: ^10.1.2
   flutter_pdfview: ^1.4.2
   epub_view: ^3.2.0
-  google_books: ^1.0.6
   fl_chart: ^0.70.0
   flutter_markdown: ^0.7.4+3
   flutter_svg: ^2.0.10
