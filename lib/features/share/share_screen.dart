@@ -162,10 +162,10 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: accentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.menu_book_rounded, color: accentColor, size: 24),
+                child: Image.asset("assets/images/logo2.png", width: 24, height: 24, color: accentColor),
               ),
               const Spacer(),
-              Text("Bookstr", style: TextStyle(color: fgColor.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+              Text("Libora", style: TextStyle(color: fgColor.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
             ],
           ),
           const SizedBox(height: 20),
@@ -186,9 +186,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.menu_book_rounded, size: 16, color: accentColor),
+                Image.asset("assets/images/logo2.png", width: 16, height: 16, color: accentColor),
                 const SizedBox(width: 6),
-                Text("Bookstr", style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                Text("Libora", style: TextStyle(color: accentColor, fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -316,7 +316,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
 
-      await ShareService.shareImage(_cardKey, text: "My reading on Bookstr");
+      await ShareService.shareImage(_cardKey, text: "My reading on Libora");
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

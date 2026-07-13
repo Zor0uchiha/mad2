@@ -16,7 +16,7 @@ class ShareService {
 
       final pngBytes = byteData.buffer.asUint8List();
       await Share.shareXFiles(
-        [XFile.fromData(pngBytes, name: 'bookstr_share.png')],
+        [XFile.fromData(pngBytes, name: 'libora_share.png')],
         text: text ?? '',
       );
     } catch (e) {
@@ -29,19 +29,19 @@ class ShareService {
   }
 
   static Future<void> shareBook(String title, String author, {String? coverUrl}) async {
-    final text = 'Reading "$title" by $author on Bookstr';
+    final text = 'Reading "$title" by $author on Libora';
     await shareText(text);
   }
 
   static Future<void> shareReview(String bookTitle, double rating, String review) async {
     final stars = '★' * rating.round() + '☆' * (5 - rating.round());
-    final text = 'Reviewed "$bookTitle" $stars\n\n$review\n\nvia Bookstr';
+    final text = 'Reviewed "$bookTitle" $stars\n\n$review\n\nvia Libora';
     await shareText(text);
   }
 
   static Future<void> shareReadingList(String listName, List<String> books) async {
     final bookList = books.take(5).map((b) => '• $b').join('\n');
-    final text = 'My reading list: "$listName"\n\n$bookList\n\nvia Bookstr';
+    final text = 'My reading list: "$listName"\n\n$bookList\n\nvia Libora';
     await shareText(text);
   }
 
@@ -51,12 +51,12 @@ class ShareService {
     required int readingTime,
     required int streak,
   }) async {
-    final text = '📚 Bookstr Reading Stats\n\n'
+    final text = '📚 Libora Reading Stats\n\n'
         'Books Read: $booksRead\n'
         'Pages Read: $pagesRead\n'
         'Reading Time: ${readingTime}m\n'
         'Streak: $streak days\n\n'
-        'via Bookstr';
+        'via Libora';
     await shareText(text);
   }
 }

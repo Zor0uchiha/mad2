@@ -84,7 +84,7 @@ if app_gradle:
             (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 35'),
             (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23'),
             (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),
-            (r'applicationId\s*=\s*"?flutter\.applicationId"?', 'applicationId = "com.example.bookstr"'),
+            (r'applicationId\s*=\s*"?flutter\.applicationId"?', 'applicationId = "com.example.libora"'),
         ], [
             ('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true'),
         ])
@@ -95,8 +95,8 @@ if app_gradle:
             (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23'),
             (r'minSdkVersion\s+\d+', 'minSdkVersion 23'),
             (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),
-            (r'applicationId\s*=\s*"[^"]*"', 'applicationId = "com.example.bookstr"'),
-            (r'applicationId\s+"[^"]*"', 'applicationId "com.example.bookstr"'),
+            (r'applicationId\s*=\s*"[^"]*"', 'applicationId = "com.example.libora"'),
+            (r'applicationId\s+"[^"]*"', 'applicationId "com.example.libora"'),
         ], [
             ('compileOptions {', 'compileOptions {\n        coreLibraryDesugaringEnabled true'),
         ])

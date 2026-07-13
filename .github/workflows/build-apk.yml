@@ -33,7 +33,7 @@ jobs:
         run: mkdir -p assets/images assets/icons assets/fonts
 
       - name: Create Flutter project files
-        run: flutter create --project-name bookstr .
+        run: flutter create --project-name libora .
 
       - name: Get dependencies
         run: flutter pub get
@@ -48,15 +48,15 @@ jobs:
           {
             "project_info": {
               "project_number": "000000000000",
-              "project_id": "bookstr-dummy",
-              "storage_bucket": "bookstr-dummy.appspot.com"
+              "project_id": "libora-dummy",
+              "storage_bucket": "libora-dummy.appspot.com"
             },
             "client": [
               {
                 "client_info": {
                   "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
                   "android_client_info": {
-                    "package_name": "com.example.bookstr"
+                    "package_name": "com.example.libora"
                   }
                 },
                 "api_key": [

@@ -118,17 +118,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.menu_book_rounded,
-                      size: 44,
-                      color: theme.colorScheme.onPrimary,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      "assets/images/logo2.png",
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
                     ),
                   ),
                   SizedBox(height: 32),
@@ -143,7 +139,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   Text(
                     _isSignIn
                         ? "Sign in to sync your library"
-                        : "Join Bookstr and start reading",
+                        : "Join Libora and start reading",
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

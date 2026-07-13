@@ -1,5 +1,5 @@
-name: bookstr
-description: Privacy-first e-book reader with offline support and online catalog
+name: libora
+description: Privacy-first e-book reader with offline support
 publish_to: "none"
 version: 1.0.0+1
 

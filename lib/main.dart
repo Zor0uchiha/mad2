@@ -25,5 +25,5 @@ void main() async {
     print('Hive initialization failed: $e');
   }
 
-  runApp(const ProviderScope(child: BookstrApp()));
+  runApp(const ProviderScope(child: LiboraApp()));
 }

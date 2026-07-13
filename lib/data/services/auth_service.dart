@@ -4,28 +4,39 @@ import '../../core/errors/app_exception.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  final FirebaseAuth _auth;
+  final FirebaseAuth? _auth;
   final GoogleSignIn _googleSignIn;
 
   AuthService({
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
-  })  : _auth = auth ?? FirebaseAuth.instance,
+  })  : _auth = auth ?? _tryGetFirebaseAuth(),
         _googleSignIn = googleSignIn ?? GoogleSignIn();
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  static FirebaseAuth? _tryGetFirebaseAuth() {
+    try {
+      return FirebaseAuth.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  User? get currentFirebaseUser => _auth.currentUser;
+  bool get _isAvailable => _auth != null;
+
+  Stream<User?> get authStateChanges => _auth?.authStateChanges() ?? const Stream.empty();
+
+  User? get currentFirebaseUser => _auth?.currentUser;
 
   Future<UserModel?> get currentUser async {
-    final user = _auth.currentUser;
+    final user = _auth?.currentUser;
     if (user == null) return null;
     return _mapFirebaseUser(user);
   }
 
   Future<UserModel> signInAnonymously() async {
+    _ensureAvailable();
     try {
-      final result = await _auth.signInAnonymously();
+      final result = await _auth!.signInAnonymously();
       return _mapFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Anonymous sign-in failed', code: e.code);
@@ -33,8 +44,9 @@ class AuthService {
   }
 
   Future<UserModel> signInWithEmail(String email, String password) async {
+    _ensureAvailable();
     try {
-      final result = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final result = await _auth!.signInWithEmailAndPassword(email: email, password: password);
       return _mapFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Sign in failed', code: e.code);
@@ -42,8 +54,9 @@ class AuthService {
   }
 
   Future<UserModel> signUpWithEmail(String email, String password) async {
+    _ensureAvailable();
     try {
-      final result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      final result = await _auth!.createUserWithEmailAndPassword(email: email, password: password);
       return _mapFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Sign up failed', code: e.code);
@@ -51,6 +64,7 @@ class AuthService {
   }
 
   Future<UserModel> signInWithGoogle() async {
+    _ensureAvailable();
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -61,7 +75,7 @@ class AuthService {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      final result = await _auth.signInWithCredential(credential);
+      final result = await _auth!.signInWithCredential(credential);
       return _mapFirebaseUser(result.user!);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Google sign-in failed', code: e.code);
@@ -70,7 +84,13 @@ class AuthService {
 
   Future<void> signOut() async {
     await _googleSignIn.signOut();
-    await _auth.signOut();
+    await _auth?.signOut();
+  }
+
+  void _ensureAvailable() {
+    if (!_isAvailable) {
+      throw AuthException('Firebase is not available. Use guest mode for offline access.');
+    }
   }
 
   UserModel _mapFirebaseUser(User user) {

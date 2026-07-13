@@ -183,7 +183,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                           ),
                           const SizedBox(width: 12),
                           IconButton.outlined(
-                            onPressed: () => share_plus.Share.share("Check out ${book.title} on Bookstr!"),
+                            onPressed: () => share_plus.Share.share("Check out ${book.title} on Libora!"),
                             icon: const Icon(Icons.share_rounded),
                           ),
                         ],

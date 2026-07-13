@@ -4,8 +4,8 @@ import 'core/theme/app_theme.dart';
 import 'core/navigation/router.dart';
 import 'providers/settings_provider.dart';
 
-class BookstrApp extends ConsumerWidget {
-  const BookstrApp({super.key});
+class LiboraApp extends ConsumerWidget {
+  const LiboraApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -13,7 +13,7 @@ class BookstrApp extends ConsumerWidget {
     final seedColor = ref.watch(seedColorProvider);
 
     return MaterialApp.router(
-      title: 'Bookstr',
+      title: 'Libora',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme.copyWith(
         colorScheme: AppTheme.lightTheme.colorScheme.copyWith(primary: seedColor),
