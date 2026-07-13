@@ -370,21 +370,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             });
           }
         },
-        onChapterChanged: (chapter) {
-          if (mounted && chapter != null) {
-            final idx = chapter.chapterIndex;
-            if (mounted) {
-              setState(() {
-                _currentPage = idx;
-              });
-            }
-          }
-        },
         onDocumentError: (error) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("EPUB error: $error")),
-            );
+            setState(() => _totalPages = 1);
           }
         },
       );
