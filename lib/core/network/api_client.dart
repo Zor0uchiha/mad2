@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:bookstr/core/errors/app_exception.dart';
-import 'package:bookstr/core/utils/logger.dart';
+import '../errors/app_exception.dart';
+import '../utils/logger.dart';
 
 class ApiClient {
   final String baseUrl;

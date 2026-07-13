@@ -11,7 +11,7 @@ import "../../data/repositories/local_repositories.dart";
 import "../../data/repositories/reading_repositories.dart";
 
 final _allStatsProvider = Provider.autoDispose<_StatsData>((ref) {
-  final books = ref.watch(booksProvider).getAllBooks();
+  final books = ref.watch(allBooksProvider).asData?.value ?? [];
   final totalBooks = books.length;
   final totalPages = books.fold<int>(0, (sum, b) => sum + b.currentPage);
   final finishedBooks = books.where((b) => b.progress >= 1.0).length;
@@ -263,7 +263,7 @@ class _MonthlyChart extends StatelessWidget {
           drawVerticalLine: false,
           horizontalInterval: 1,
           getDrawingHorizontalLine: (value) {
-            return FlLine(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3), strokeWidth: 0.5);
+            return FlLine(color: theme.colorScheme.outlineVariant.withOpacity(0.3), strokeWidth: 0.5);
           },
         ),
         borderData: FlBorderData(show: false),
@@ -352,7 +352,7 @@ class _StatCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 12),

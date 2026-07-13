@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "package:bookstr/core/providers.dart";
-import "package:bookstr/core/constants/app_constants.dart";
-import "package:bookstr/core/theme/app_colors.dart";
-import "package:bookstr/data/models/collection_model.dart";
-import "package:bookstr/data/repositories/local_repositories.dart";
-import "package:bookstr/features/collections/widgets/collection_card.dart";
+import "../../core/providers.dart";
+import "../../core/constants/app_constants.dart";
+import "../../core/theme/app_colors.dart";
+import "../../data/models/collection_model.dart";
+import "../../data/repositories/local_repositories.dart";
+import "widgets/collection_card.dart";
 
 class CollectionsScreen extends ConsumerStatefulWidget {
   const CollectionsScreen({super.key});
@@ -64,7 +64,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                               ? Border.all(color: Colors.white, width: 3)
                               : null,
                           boxShadow: isSelected
-                              ? [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 8)]
+                              ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8)]
                               : null,
                         ),
                         child: isSelected
@@ -108,7 +108,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final collections = ref.watch(collectionsProvider).getAllCollections();
+    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
 
     return Scaffold(
       appBar: AppBar(title: const Text("Collections")),

@@ -7,8 +7,8 @@ import "../../data/models/reading_list_model.dart";
 import "../../data/models/book_model.dart";
 import "../../data/repositories/local_repositories.dart";
 
-final _readingListsProvider = Provider.autoDispose<List<ReadingListModel>>((ref) {
-  final box = ref.watch(readingListsProvider);
+final _readingListsProvider = FutureProvider.autoDispose<List<ReadingListModel>>((ref) async {
+  final box = await ref.watch(readingListsBoxProvider.future);
   final lists = box.values.toList();
   lists.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   return lists;
@@ -65,7 +65,7 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
   }
 
   Future<void> _createList(String title, String description) async {
-    final box = ref.read(readingListsProvider);
+    final box = await ref.read(readingListsBoxProvider.future);
     final list = ReadingListModel(
       id: const Uuid().v4(),
       title: title,
@@ -91,21 +91,24 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
       ),
     );
     if (confirmed == true) {
-      await ref.read(readingListsProvider).delete(list.id);
+      final box = await ref.read(readingListsBoxProvider.future);
+      await box.delete(list.id);
     }
   }
 
   Future<void> _togglePublic(ReadingListModel list) async {
     final updated = list.copyWith(isPublic: !list.isPublic, updatedAt: DateTime.now());
-    await ref.read(readingListsProvider).put(updated.id, updated);
+    final box = await ref.read(readingListsBoxProvider.future);
+    await box.put(updated.id, updated);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final lists = ref.watch(_readingListsProvider);
-    final books = ref.watch(booksProvider);
+    final listsAsync = ref.watch(_readingListsProvider);
+    final lists = listsAsync.asData?.value ?? [];
+    final books = ref.watch(allBooksProvider).asData?.value ?? [];
 
     return Scaffold(
       appBar: AppBar(title: const Text("Reading Lists")),
@@ -145,7 +148,8 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
                 }
                 final list = lists[index - 1];
                 final isExpanded = _expandedListId == list.id;
-                final listBooks = list.bookIds.map((id) => books.getBook(id)).whereType<BookModel>().toList();
+                final bookMap = {for (final b in books) b.id: b};
+                final listBooks = list.bookIds.map((id) => bookMap[id]).whereType<BookModel>().toList();
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),

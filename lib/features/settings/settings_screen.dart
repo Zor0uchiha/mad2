@@ -198,7 +198,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(),
           _SectionHeader(title: "Storage"),
           ListTile(
-            leading: const Icon(Icons.scan_rounded),
+            leading: const Icon(Icons.search_rounded),
             title: const Text("Scan Device for Books"),
             subtitle: const Text("Find local EPUB and PDF files"),
             trailing: const Icon(Icons.chevron_right_rounded),
@@ -217,7 +217,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             data: (info) => ListTile(
               leading: const Icon(Icons.info_rounded),
               title: const Text("Version"),
-              subtitle: Text("${info.versionName} (${info.buildNumber})"),
+              subtitle: Text("${info.version} (${info.buildNumber})"),
             ),
             loading: () => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: const Text("...")),
             error: (_, __) => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: Text(AppConstants.appVersion)),
@@ -291,7 +291,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: c,
                   shape: BoxShape.circle,
                   border: selected ? Border.all(color: Colors.white, width: 3) : null,
-                  boxShadow: selected ? [BoxShadow(color: c.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 1)] : null,
+                  boxShadow: selected ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8, spreadRadius: 1)] : null,
                 ),
                 child: selected ? const Icon(Icons.check_rounded, color: Colors.white) : null,
               ),

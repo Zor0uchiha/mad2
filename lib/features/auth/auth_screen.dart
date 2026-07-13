@@ -5,6 +5,7 @@ import "package:google_sign_in/google_sign_in.dart";
 import "package:firebase_auth/firebase_auth.dart";
 import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
+import "../../core/errors/app_exception.dart";
 import "../../data/services/auth_service.dart";
 
 class AuthScreen extends ConsumerStatefulWidget {

@@ -28,7 +28,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final books = ref.watch(booksProvider).getAllBooks();
+    final books = ref.watch(allBooksProvider).asData?.value ?? [];
 
     final currentlyReading = books.where((b) => b.progress > 0 && b.progress < 1.0).toList();
     final finishedBooks = books.where((b) => b.progress >= 1.0).toList();
@@ -150,7 +150,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         color: bgColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 16, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -161,11 +161,11 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: accentColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: accentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
                 child: Icon(Icons.menu_book_rounded, color: accentColor, size: 24),
               ),
               const Spacer(),
-              Text("Bookstr", style: TextStyle(color: fgColor.withValues(alpha: 0.5), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+              Text("Bookstr", style: TextStyle(color: fgColor.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
             ],
           ),
           const SizedBox(height: 20),
@@ -180,7 +180,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
+              color: accentColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -199,7 +199,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 
   Widget _buildCurrentlyReadingCard(Color fgColor, Color accentColor, List<BookModel> currentlyReading) {
     if (currentlyReading.isEmpty) {
-      return Text("No books currently being read", style: TextStyle(color: fgColor.withValues(alpha: 0.6), fontSize: 16));
+      return Text("No books currently being read", style: TextStyle(color: fgColor.withOpacity(0.6), fontSize: 16));
     }
     final book = currentlyReading.first;
     return Column(
@@ -209,19 +209,19 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         const SizedBox(height: 12),
         Text(book.title, style: TextStyle(color: fgColor, fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text(book.author, style: TextStyle(color: fgColor.withValues(alpha: 0.7), fontSize: 16)),
+        Text(book.author, style: TextStyle(color: fgColor.withOpacity(0.7), fontSize: 16)),
         const SizedBox(height: 16),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: book.progress,
-            backgroundColor: fgColor.withValues(alpha: 0.1),
+            backgroundColor: fgColor.withOpacity(0.1),
             color: accentColor,
             minHeight: 6,
           ),
         ),
         const SizedBox(height: 6),
-        Text("${(book.progress * 100).toInt()}% complete", style: TextStyle(color: fgColor.withValues(alpha: 0.5), fontSize: 12)),
+        Text("${(book.progress * 100).toInt()}% complete", style: TextStyle(color: fgColor.withOpacity(0.5), fontSize: 12)),
       ],
     );
   }
@@ -234,7 +234,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         const SizedBox(height: 12),
         Text("${finishedBooks.length}", style: TextStyle(color: fgColor, fontSize: 48, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text("book${finishedBooks.length == 1 ? "" : "s"} completed", style: TextStyle(color: fgColor.withValues(alpha: 0.7), fontSize: 16)),
+        Text("book${finishedBooks.length == 1 ? "" : "s"} completed", style: TextStyle(color: fgColor.withOpacity(0.7), fontSize: 16)),
         if (finishedBooks.isNotEmpty) ...[
           const SizedBox(height: 12),
           ...finishedBooks.take(3).map((book) => Padding(
@@ -243,7 +243,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                   children: [
                     Icon(Icons.check_circle_rounded, size: 16, color: AppColors.finished),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(book.title, style: TextStyle(color: fgColor.withValues(alpha: 0.8), fontSize: 14))),
+                    Expanded(child: Text(book.title, style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 14))),
                   ],
                 ),
               )),
@@ -265,7 +265,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("$totalBooks", style: TextStyle(color: fgColor, fontSize: 32, fontWeight: FontWeight.bold)),
-                  Text("Books", style: TextStyle(color: fgColor.withValues(alpha: 0.6), fontSize: 14)),
+                  Text("Books", style: TextStyle(color: fgColor.withOpacity(0.6), fontSize: 14)),
                 ],
               ),
             ),
@@ -274,7 +274,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("$totalPages", style: TextStyle(color: fgColor, fontSize: 32, fontWeight: FontWeight.bold)),
-                  Text("Pages", style: TextStyle(color: fgColor.withValues(alpha: 0.6), fontSize: 14)),
+                  Text("Pages", style: TextStyle(color: fgColor.withOpacity(0.6), fontSize: 14)),
                 ],
               ),
             ),
@@ -298,7 +298,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("0 days", style: TextStyle(color: fgColor, fontSize: 36, fontWeight: FontWeight.bold)),
-                Text("Keep reading every day!", style: TextStyle(color: fgColor.withValues(alpha: 0.7), fontSize: 14)),
+                Text("Keep reading every day!", style: TextStyle(color: fgColor.withOpacity(0.7), fontSize: 14)),
               ],
             ),
           ],
@@ -316,8 +316,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
 
-      final bytes = byteData.buffer.asUint8List();
-      await ShareService.shareImage(bytes, "My reading on Bookstr");
+      await ShareService.shareImage(_cardKey, text: "My reading on Bookstr");
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

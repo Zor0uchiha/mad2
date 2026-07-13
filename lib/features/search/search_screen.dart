@@ -87,9 +87,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
     ref.read(_recentSearchesProvider.notifier).add(query.trim());
 
     try {
-      final local = ref.read(booksProvider).searchBooks(query);
+      final local = await ref.read(booksProvider).searchBooks(query);
       final online = await ref.read(onlineBookServiceProvider).searchBooks(query);
-      final allCollections = ref.read(collectionsProvider).getAllCollections();
+      final allCollections = await ref.read(collectionsProvider).getAllCollections();
       final lowerQuery = query.toLowerCase();
       final collections = allCollections.where((c) => c.name.toLowerCase().contains(lowerQuery)).toList();
 
@@ -328,7 +328,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.search_rounded, size: 64, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                              Icon(Icons.search_rounded, size: 64, color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
                               const SizedBox(height: 16),
                               Text("Search your library", style: theme.textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
                               const SizedBox(height: 4),

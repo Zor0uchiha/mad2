@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AppTheme {
   static const _primaryLightSeed = 0xFF1A73E8;
   static const _primaryDarkSeed = 0xFF90CAF9;
@@ -63,7 +65,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
         ),
         clipBehavior: Clip.antiAlias,
       ),
@@ -120,7 +122,7 @@ class AppTheme {
           borderSide: BorderSide(color: colorScheme.error, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.6)),
         labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
       ),
       chipTheme: ChipThemeData(
@@ -143,7 +145,7 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: colorScheme.surface,
       dividerTheme: DividerThemeData(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        color: colorScheme.outlineVariant.withOpacity(0.5),
         thickness: 0.5,
         space: 0,
       ),
@@ -162,19 +164,19 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primary;
           return null;
         }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return colorScheme.primaryContainer;
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primaryContainer;
           return null;
         }),
       ),
     );
   }
 
-  static String _getFontFamily() {
+  static String? _getFontFamily() {
     return null;
   }
 }

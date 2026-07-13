@@ -54,7 +54,7 @@ class BookCover extends StatelessWidget {
               child: Icon(
                 Icons.menu_book_rounded,
                 size: width * 0.4,
-                color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.5),
+                color: theme.colorScheme.onPrimaryContainer.withOpacity(0.5),
               ),
             ),
     );

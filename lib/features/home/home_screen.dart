@@ -8,12 +8,13 @@ import "../../core/theme/app_colors.dart";
 import "../../data/models/book_model.dart";
 import "../../data/models/collection_model.dart";
 import "../../data/models/reading_goal_model.dart";
+import "../../data/services/storage_service.dart";
 import "widgets/continue_reading_card.dart";
 import "widgets/quick_action_button.dart";
 import "widgets/stat_card.dart";
 
-final readingGoalProvider = Provider<ReadingGoalModel?>((ref) {
-  final box = Hive.box<ReadingGoalModel>(AppConstants.hiveBoxReadingGoals);
+final readingGoalProvider = FutureProvider<ReadingGoalModel?>((ref) async {
+  final box = await StorageService.openReadingGoalsBox();
   final goals = box.values.toList();
   if (goals.isEmpty) return null;
   goals.sort((a, b) => b.endDate.compareTo(a.endDate));
@@ -26,9 +27,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final books = ref.watch(booksProvider).getAllBooks();
-    final collections = ref.watch(collectionsProvider).getAllCollections();
-    final recentBooks = ref.watch(booksProvider).getRecentBooks(limit: 10);
+    final books = ref.watch(allBooksProvider).asData?.value ?? [];
+    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
+    final recentBooks = ref.watch(recentBooksProvider).asData?.value ?? [];
     final readingGoal = ref.watch(readingGoalProvider);
     final inProgressBooks =
         books.where((b) => b.progress > 0 && b.progress < 1).toList();
@@ -164,8 +165,8 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
             SizedBox(height: 28),
-            if (readingGoal != null && readingGoal.targetBooks > 0) ...[
-              _ReadingGoalCard(goal: readingGoal),
+            if (readingGoal.asData?.value case final goal? when goal.targetBooks > 0) ...[
+              _ReadingGoalCard(goal: goal),
               SizedBox(height: 28),
             ],
             StatCard(

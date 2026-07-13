@@ -33,13 +33,42 @@ jobs:
         run: mkdir -p assets/images assets/icons assets/fonts
 
       - name: Create Flutter project files
-        run: flutter create .
+        run: flutter create --project-name bookstr .
+
+      - name: Get dependencies
+        run: flutter pub get
 
       - name: Patch Android build files
         run: python3 .github/scripts/patch_android.py
 
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Create dummy google-services.json
+        run: |
+          mkdir -p android/app
+          cat > android/app/google-services.json << 'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "bookstr-dummy",
+              "storage_bucket": "bookstr-dummy.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.example.bookstr"
+                  }
+                },
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDummyKeyForBuildOnly"
+                  }
+                ]
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
 
       - name: Build APK
         run: flutter build apk --release

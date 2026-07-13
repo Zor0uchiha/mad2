@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "package:bookstr/core/providers.dart";
-import "package:bookstr/core/constants/app_constants.dart";
-import "package:bookstr/data/models/bookmark_model.dart";
-import "package:bookstr/data/models/book_model.dart";
-import "package:bookstr/data/repositories/local_repositories.dart";
-import "package:bookstr/data/repositories/reading_repositories.dart";
+import "../../core/providers.dart";
+import "../../core/constants/app_constants.dart";
+import "../../data/models/bookmark_model.dart";
+import "../../data/models/book_model.dart";
+import "../../data/repositories/local_repositories.dart";
+import "../../data/repositories/reading_repositories.dart";
 
 class BookmarksScreen extends ConsumerStatefulWidget {
   const BookmarksScreen({super.key});
@@ -56,13 +56,13 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
   }
 
   Future<void> _deleteBookmark(BookmarkModel bookmark) async {
-    await ref.read(bookmarksProvider).deleteBookmark(bookmark.id);
+    await ref.read(bookmarkRepositoryProvider).deleteBookmark(bookmark.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Bookmark deleted"),
           action: SnackBarAction(label: "Undo", onPressed: () async {
-            await ref.read(bookmarksProvider).addBookmark(bookmark);
+            await ref.read(bookmarkRepositoryProvider).addBookmark(bookmark);
           }),
         ),
       );
@@ -94,8 +94,10 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bookmarks = ref.watch(bookmarksProvider).getAllBookmarks();
-    final books = ref.watch(booksProvider).getAllBooks();
+    final bookmarksAsync = ref.watch(allBookmarksProvider);
+    final booksAsync = ref.watch(allBooksProvider);
+    final bookmarks = bookmarksAsync.asData?.value ?? [];
+    final books = booksAsync.asData?.value ?? [];
     final filtered = _filterBookmarks(bookmarks, books);
 
     final uniqueBookIds = bookmarks.map((b) => b.bookId).toSet().toList();

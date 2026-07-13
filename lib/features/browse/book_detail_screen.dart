@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:cached_network_image/cached_network_image.dart";
-import "package:share_plus/share_plus.dart";
+import "package:share_plus/share_plus.dart" as share_plus;
 import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
@@ -183,7 +183,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                           ),
                           const SizedBox(width: 12),
                           IconButton.outlined(
-                            onPressed: () => Share.share("Check out ${book.title} on Bookstr!"),
+                            onPressed: () => share_plus.SharePlus.instance.share(share_plus.ShareParams(text: "Check out ${book.title} on Bookstr!")),
                             icon: const Icon(Icons.share_rounded),
                           ),
                         ],
@@ -300,7 +300,8 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
 
   Future<void> _importToLibrary(OnlineBookModel book) async {
     final repo = ref.read(booksProvider);
-    final existing = repo.getAllBooks().where((b) => b.title == book.title).toList();
+    final allBooks = await repo.getAllBooks();
+    final existing = allBooks.where((b) => b.title == book.title).toList();
     if (existing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("${book.title} is already in your library")),
@@ -359,7 +360,7 @@ class _StatusChip extends StatelessWidget {
       ),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: color.withValues(alpha: 0.15),
+      selectedColor: color.withOpacity(0.15),
       labelStyle: TextStyle(color: selected ? color : null),
     );
   }

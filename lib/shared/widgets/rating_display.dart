@@ -30,7 +30,7 @@ class RatingDisplay extends StatelessWidget {
           } else if (i == fullStars && hasHalfStar) {
             return Icon(Icons.star_half_rounded, size: size, color: AppColors.rating);
           } else {
-            return Icon(Icons.star_outline_rounded, size: size, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3));
+            return Icon(Icons.star_outline_rounded, size: size, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3));
           }
         }),
         if (showValue) ...[

@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:bookstr/data/models/collection_model.dart";
+import "../../../data/models/collection_model.dart";
 
 class CollectionCard extends StatelessWidget {
   final CollectionModel collection;
@@ -42,7 +42,7 @@ class CollectionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

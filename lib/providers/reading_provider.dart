@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../data/repositories/reading_repository.dart';
 import '../data/models/bookmark_model.dart';
 import '../data/models/note_model.dart';
 import '../data/models/reading_progress_model.dart';
+import '../data/models/reading_list_model.dart';
+import '../core/constants/app_constants.dart';
 
 final bookmarkRepositoryProvider = Provider<BookmarkRepository>((ref) {
   return BookmarkRepository();
@@ -34,6 +37,10 @@ final allNotesProvider = FutureProvider<List<NoteModel>>((ref) async {
 final notesForBookProvider = FutureProvider.family<List<NoteModel>, String>((ref, bookId) async {
   final repo = ref.watch(noteRepositoryProvider);
   return repo.getNotesForBook(bookId);
+});
+
+final readingListsBoxProvider = FutureProvider<Box<ReadingListModel>>((ref) async {
+  return await Hive.openBox<ReadingListModel>(AppConstants.hiveBoxReadingLists);
 });
 
 final readingProgressForBookProvider = FutureProvider.family<ReadingProgressModel?, String>((ref, bookId) async {

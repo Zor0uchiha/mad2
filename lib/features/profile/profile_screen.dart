@@ -16,7 +16,7 @@ final _userProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
 });
 
 final _profileBooksProvider = Provider.autoDispose<int>((ref) {
-  return ref.watch(booksProvider).getAllBooks().length;
+  return ref.watch(totalBooksProvider).asData?.value ?? 0;
 });
 
 final _profileReviewsProvider = Provider.autoDispose<int>((ref) {
@@ -84,7 +84,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
             );
           }
 
-          final books = ref.watch(booksProvider).getAllBooks();
+          final books = ref.watch(allBooksProvider).asData?.value ?? [];
           final currentlyReading = books.where((b) => b.progress > 0 && b.progress < 1).length;
           final finishedBooks = books.where((b) => b.progress >= 1).length;
 
@@ -386,7 +386,7 @@ class _CollectionsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final collections = ref.watch(collectionsProvider).getAllCollections();
+    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
     if (collections.isEmpty) {
       return Center(
         child: Column(
@@ -420,8 +420,8 @@ class _ListsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final listsBox = ref.watch(readingListsProvider);
-    final lists = listsBox.values.toList();
+    final listsBoxAsync = ref.watch(readingListsBoxProvider);
+    final lists = listsBoxAsync.asData?.value?.values.toList() ?? [];
     if (lists.isEmpty) {
       return Center(
         child: Column(

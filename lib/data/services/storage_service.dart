@@ -1,5 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
+import '../../core/hive/adapters.dart' as adapters;
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/book_model.dart';
@@ -17,7 +17,17 @@ class StorageService {
     await Hive.initFlutter();
   }
 
-  static Future<void> registerAdapters() async {}
+  static Future<void> registerAdapters() async {
+    Hive.registerAdapter(adapters.BookModelAdapter());
+    Hive.registerAdapter(adapters.BookmarkModelAdapter());
+    Hive.registerAdapter(adapters.CollectionModelAdapter());
+    Hive.registerAdapter(adapters.NoteModelAdapter());
+    Hive.registerAdapter(adapters.ReadingGoalModelAdapter());
+    Hive.registerAdapter(adapters.ReadingListModelAdapter());
+    Hive.registerAdapter(adapters.ReadingProgressModelAdapter());
+    Hive.registerAdapter(adapters.ReviewModelAdapter());
+    Hive.registerAdapter(adapters.UserModelAdapter());
+  }
 
   static Future<Box<dynamic>> openBox(String name) async {
     return await Hive.openBox(name);

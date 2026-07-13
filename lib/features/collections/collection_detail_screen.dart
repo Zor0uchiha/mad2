@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "package:bookstr/core/providers.dart";
-import "package:bookstr/core/constants/app_constants.dart";
-import "package:bookstr/core/theme/app_colors.dart";
-import "package:bookstr/data/models/collection_model.dart";
-import "package:bookstr/data/models/book_model.dart";
-import "package:bookstr/data/repositories/local_repositories.dart";
+import "../../core/providers.dart";
+import "../../core/constants/app_constants.dart";
+import "../../core/theme/app_colors.dart";
+import "../../data/models/collection_model.dart";
+import "../../data/models/book_model.dart";
+import "../../data/repositories/local_repositories.dart";
 
 class CollectionDetailScreen extends ConsumerWidget {
   final String collectionId;
@@ -15,15 +15,16 @@ class CollectionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final collection = ref.watch(collectionsProvider).getCollection(collectionId);
+    final collectionAsync = ref.watch(collectionProvider(collectionId));
+    final booksAsync = ref.watch(booksInCollectionProvider(collectionId));
+    final collection = collectionAsync.asData?.value ?? null;
+    final books = booksAsync.asData?.value ?? [];
     if (collection == null) {
       return Scaffold(
         appBar: AppBar(title: const Text("Collection")),
         body: const Center(child: Text("Collection not found")),
       );
     }
-
-    final books = ref.watch(booksProvider).getBooksByCollection(collectionId);
     final color = collection.color;
 
     return Scaffold(
@@ -44,8 +45,8 @@ class CollectionDetailScreen extends ConsumerWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  color.withValues(alpha: 0.2),
-                  color.withValues(alpha: 0.05),
+                  color.withOpacity(0.2),
+                  color.withOpacity(0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

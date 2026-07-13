@@ -40,18 +40,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   void _loadBooks() {
-    _filteredBooks = ref.read(booksProvider).getAllBooks();
-    _applySort();
+    ref.read(booksProvider).getAllBooks().then((list) {
+      if (mounted) {
+        setState(() {
+          _filteredBooks = list;
+        });
+      }
+      _applySort();
+    });
   }
 
   void _filterBooks(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredBooks = ref.read(booksProvider).getAllBooks();
-      } else {
-        _filteredBooks = ref.read(booksProvider).searchBooks(query);
+    final Future<List<BookModel>> future = query.isEmpty
+        ? ref.read(booksProvider).getAllBooks()
+        : ref.read(booksProvider).searchBooks(query);
+    future.then((list) {
+      if (mounted) {
+        setState(() {
+          _filteredBooks = list;
+        });
+        _applySort();
       }
-      _applySort();
     });
   }
 
@@ -173,7 +182,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           Icons.menu_book_rounded,
                           size: 64,
                           color: theme.colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.4),
+                              .withOpacity(0.4),
                         ),
                         SizedBox(height: 16),
                         Text(

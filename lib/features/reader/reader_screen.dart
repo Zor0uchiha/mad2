@@ -3,14 +3,14 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "package:bookstr/core/constants/app_constants.dart";
-import "package:bookstr/core/providers.dart";
-import "package:bookstr/data/models/book_model.dart";
-import "package:bookstr/data/models/bookmark_model.dart";
-import "package:bookstr/data/models/reading_progress_model.dart";
-import "package:bookstr/data/repositories/local_repositories.dart";
-import "package:bookstr/data/repositories/reading_repositories.dart";
-import "package:bookstr/features/reader/widgets/reader_settings.dart";
+import "../../core/constants/app_constants.dart";
+import "../../core/providers.dart";
+import "../../data/models/book_model.dart";
+import "../../data/models/bookmark_model.dart";
+import "../../data/models/reading_progress_model.dart";
+import "../../data/repositories/local_repositories.dart";
+import "../../data/repositories/reading_repositories.dart";
+import "widgets/reader_settings.dart";
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final String bookId;
@@ -46,27 +46,32 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   void _loadBook() {
-    final book = ref.read(booksProvider).getBook(widget.bookId);
-    if (book != null) {
-      _book = book;
-      _currentPage = book.currentPage;
-      _totalPages = book.pageCount > 0 ? book.pageCount : 1;
-      _progress = book.progress;
-      _bookLoaded = true;
-
-      _startTimers();
-    } else {
-      _totalPages = 1;
-      _book = BookModel(
-        id: widget.bookId,
-        title: "Unknown Book",
-        author: "Unknown Author",
-        format: BookFormat.pdf,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      _bookLoaded = true;
-    }
+    ref.read(booksProvider).getBook(widget.bookId).then((book) {
+      if (!mounted) return;
+      if (book != null) {
+        setState(() {
+          _book = book;
+          _currentPage = book.currentPage;
+          _totalPages = book.pageCount > 0 ? book.pageCount : 1;
+          _progress = book.progress;
+          _bookLoaded = true;
+        });
+        _startTimers();
+      } else {
+        setState(() {
+          _totalPages = 1;
+          _book = BookModel(
+            id: widget.bookId,
+            title: "Unknown Book",
+            author: "Unknown Author",
+            format: BookFormat.pdf,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          _bookLoaded = true;
+        });
+      }
+    });
   }
 
   void _startTimers() {
@@ -118,7 +123,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   }
 
   Future<void> _addBookmark() async {
-    final repo = ref.read(bookmarksProvider);
+    final repo = ref.read(bookmarkRepositoryProvider);
     final bookmark = BookmarkModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       bookId: widget.bookId,
@@ -239,7 +244,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withValues(alpha: 0.3),
+                                .withOpacity(0.3),
                           ),
                           const SizedBox(height: 24),
                           Text(
