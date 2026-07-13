@@ -1,49 +1,31 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _primaryLightSeed = 0xFF1A73E8;
-  static const _primaryDarkSeed = 0xFF90CAF9;
+  static const _primaryLightSeed = 0xFF6750A4;
+  static const _primaryDarkSeed = 0xFFD0BCFF;
 
-  static const Color primaryLight = Color(0xFF1A73E8);
-  static const Color primaryDark = Color(0xFF90CAF9);
-  static const Color secondaryLight = Color(0xFF34A853);
-  static const Color secondaryDark = Color(0xFF4CAF50);
-  static const Color errorLight = Color(0xFFD93025);
-  static const Color errorDark = Color(0xFFF28B82);
-  static const Color surfaceLight = Color(0xFFFFFBFE);
-  static const Color surfaceDark = Color(0xFF1C1B1F);
-  static const Color onSurfaceLight = Color(0xFF1C1B1F);
-  static const Color onSurfaceDark = Color(0xFFE6E1E5);
-  static const Color surfaceContainerLight = Color(0xFFF7F2FA);
-  static const Color surfaceContainerDark = Color(0xFF2B2930);
-  static const Color outlineLight = Color(0xFF79747E);
-  static const Color outlineDark = Color(0xFF938F99);
+  static const Color primaryLight = Color(0xFF6750A4);
+  static const Color primaryDark = Color(0xFFD0BCFF);
+  static const Color secondaryLight = Color(0xFF625B71);
+  static const Color secondaryDark = Color(0xFFCCC2DC);
 
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primaryLight,
       brightness: Brightness.light,
-      surface: surfaceLight,
-      error: errorLight,
     );
-
-    return _buildTheme(colorScheme, Brightness.light);
+    return _buildTheme(colorScheme);
   }
 
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primaryDark,
       brightness: Brightness.dark,
-      surface: surfaceDark,
-      error: errorDark,
     );
-
-    return _buildTheme(colorScheme, Brightness.dark);
+    return _buildTheme(colorScheme);
   }
 
-  static ThemeData _buildTheme(ColorScheme colorScheme, Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-
+  static ThemeData _buildTheme(ColorScheme colorScheme) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -130,13 +112,6 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         labelStyle: TextStyle(fontSize: 13, fontFamily: _getFontFamily()),
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-      ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         backgroundColor: colorScheme.surface,
@@ -164,12 +139,12 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) return colorScheme.primary;
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
           return null;
         }),
-        trackColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) return colorScheme.primaryContainer;
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primaryContainer;
           return null;
         }),
       ),

@@ -17,6 +17,7 @@ import '../../features/statistics/statistics_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/reader/reader_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
+import '../../features/bookmarks/notes_screen.dart';
 import '../../features/profile/reading_list_screen.dart';
 import '../../features/share/share_screen.dart';
 
@@ -94,6 +95,18 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppConstants.routeBookmarks,
       builder: (context, state) => const BookmarksScreen(),
+    ),
+    GoRoute(
+      path: AppConstants.routeNotes,
+      builder: (context, state) => const NotesScreen(),
+    ),
+    GoRoute(
+      path: "${AppConstants.routeCreateNote}/:bookId/:pageIndex",
+      builder: (context, state) {
+        final bookId = state.pathParameters['bookId'] ?? '';
+        final pageIndex = int.tryParse(state.pathParameters['pageIndex'] ?? '0') ?? 0;
+        return NotesScreen(initialBookId: bookId, initialPageIndex: pageIndex);
+      },
     ),
     GoRoute(
       path: AppConstants.routeReadingLists,

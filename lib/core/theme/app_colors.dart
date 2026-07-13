@@ -8,7 +8,7 @@ class AppColors {
   static const Color streak = Color(0xFFFF6D00);
 
   static const List<Color> collectionColors = [
-    Color(0xFF1A73E8),
+    Color(0xFF6750A4),
     Color(0xFF34A853),
     Color(0xFFEA4335),
     Color(0xFFFBBC04),

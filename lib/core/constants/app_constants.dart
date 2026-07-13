@@ -43,4 +43,6 @@ class AppConstants {
   static const String routeReadingLists = "/reading-lists";
   static const String routeReadingListDetail = "/reading-list";
   static const String routeReviews = "/reviews";
+  static const String routeNotes = "/notes";
+  static const String routeCreateNote = "/create-note";
 }
