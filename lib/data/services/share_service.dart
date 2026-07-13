@@ -15,19 +15,17 @@ class ShareService {
       if (byteData == null) return;
 
       final pngBytes = byteData.buffer.asUint8List();
-      await SharePlus.instance.share(
-        ShareParams(
-          text: text ?? '',
-          files: [XFile.fromData(pngBytes, name: 'bookstr_share.png')],
-        ),
+      await Share.shareXFiles(
+        [XFile.fromData(pngBytes, name: 'bookstr_share.png')],
+        text: text ?? '',
       );
     } catch (e) {
-      await SharePlus.instance.share(ShareParams(text: text ?? ''));
+      await Share.share(text ?? '');
     }
   }
 
   static Future<void> shareText(String text) async {
-    await SharePlus.instance.share(ShareParams(text: text));
+    await Share.share(text);
   }
 
   static Future<void> shareBook(String title, String author, {String? coverUrl}) async {

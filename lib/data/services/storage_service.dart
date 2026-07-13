@@ -74,9 +74,23 @@ class StorageService {
   }
 
   static Future<void> clearAll() async {
-    final boxes = await Hive.boxes;
-    for (final box in boxes) {
-      await box.clear();
+    const boxNames = [
+      AppConstants.hiveBoxBooks,
+      AppConstants.hiveBoxBookmarks,
+      AppConstants.hiveBoxCollections,
+      AppConstants.hiveBoxNotes,
+      AppConstants.hiveBoxReadingGoals,
+      AppConstants.hiveBoxReadingLists,
+      AppConstants.hiveBoxReadingProgress,
+      AppConstants.hiveBoxReviews,
+      AppConstants.hiveBoxUserProfile,
+      AppConstants.hiveBoxSettings,
+      AppConstants.hiveBoxSyncQueue,
+    ];
+    for (final name in boxNames) {
+      if (Hive.isBoxOpen(name)) {
+        await Hive.box(name).clear();
+      }
     }
   }
 

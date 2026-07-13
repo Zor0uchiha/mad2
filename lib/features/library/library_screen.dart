@@ -129,7 +129,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ],
                 ),
               ),
-            ),
+            ).toList(),
           ),
           IconButton(
             onPressed: () => setState(() => _isGridView = !_isGridView),
