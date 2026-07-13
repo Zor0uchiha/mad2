@@ -53,13 +53,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     await prefs.setBool("onboarding_complete", true);
     if (!mounted) return;
-    final user = await ref.read(authServiceProvider).currentUser;
+    try {
+      final user = await ref.read(authServiceProvider).currentUser;
+      if (!mounted) return;
+      if (user != null) {
+        context.go(AppConstants.routeHome);
+        return;
+      }
+    } catch (_) {}
     if (!mounted) return;
-    if (user != null) {
-      context.go(AppConstants.routeHome);
-    } else {
-      context.go(AppConstants.routeAuth);
-    }
+    context.go(AppConstants.routeAuth);
   }
 
   @override

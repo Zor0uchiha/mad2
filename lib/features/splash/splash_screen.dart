@@ -26,9 +26,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final onboardingComplete = prefs.getBool("onboarding_complete") ?? false;
     if (!mounted) return;
     if (onboardingComplete) {
-      final user = await ref.read(authServiceProvider).currentUser;
+      try {
+        final user = await ref.read(authServiceProvider).currentUser;
+        if (!mounted) return;
+        if (user != null) {
+          context.go(AppConstants.routeHome);
+          return;
+        }
+      } catch (_) {}
       if (!mounted) return;
-      context.go(user != null ? AppConstants.routeHome : AppConstants.routeAuth);
+      context.go(AppConstants.routeAuth);
     } else {
       context.go(AppConstants.routeOnboarding);
     }
