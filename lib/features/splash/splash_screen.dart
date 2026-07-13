@@ -33,7 +33,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           context.go(AppConstants.routeHome);
           return;
         }
-      } catch (_) {}
+      } catch (_) {
+        // Firebase unavailable — go to home in local-only mode
+        if (!mounted) return;
+        context.go(AppConstants.routeHome);
+        return;
+      }
       if (!mounted) return;
       context.go(AppConstants.routeAuth);
     } else {

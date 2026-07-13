@@ -98,14 +98,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     });
     try {
       await ref.read(authServiceProvider).signInAnonymously();
-      if (mounted) context.go(AppConstants.routeHome);
-    } on AuthException catch (e) {
-      setState(() => _error = e.message);
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (_) {
+      // Firebase unavailable — continue in local-only mode
     }
+    if (mounted) context.go(AppConstants.routeHome);
   }
 
   @override
