@@ -315,8 +315,8 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final collectionAsync = ref.watch(collectionProvider(collectionId));
-    final booksAsync = ref.watch(booksInCollectionProvider(collectionId));
+    final collectionAsync = ref.watch(collectionProvider(widget.collectionId));
+    final booksAsync = ref.watch(booksInCollectionProvider(widget.collectionId));
     final collection = collectionAsync.asData?.value ?? null;
     final books = booksAsync.asData?.value ?? [];
     if (collection == null) {

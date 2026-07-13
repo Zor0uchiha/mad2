@@ -1,10 +1,12 @@
 import "dart:async";
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:flutter_pdfview/flutter_pdfview.dart";
 import "package:epub_view/epub_view.dart";
+import "package:path/path.dart" as p;
 import "../../core/constants/app_constants.dart";
 import "../../core/providers.dart";
 import "../../data/models/book_model.dart";
@@ -322,7 +324,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         onRender: (pages) {
           if (mounted) {
             setState(() {
-              _totalPages = pages;
+              _totalPages = pages ?? 1;
             });
           }
         },
@@ -356,21 +358,45 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   Widget _buildEpubView() {
     try {
-      return EpubViewer(
-        filePath: _book.filePath!,
-        onPageChanged: (page, total) {
+      final controller = EpubController(
+        document: _loadEpubBook(),
+      );
+      return EpubView(
+        controller: controller,
+        onDocumentLoaded: (document) {
           if (mounted) {
             setState(() {
-              _currentPage = page;
-              _totalPages = total;
-              _progress = total > 0 ? page / total : 0.0;
+              _totalPages = document.Chapters?.length ?? 1;
             });
+          }
+        },
+        onChapterChanged: (chapter) {
+          if (mounted && chapter != null) {
+            final idx = chapter.chapterIndex;
+            if (mounted) {
+              setState(() {
+                _currentPage = idx;
+              });
+            }
+          }
+        },
+        onDocumentError: (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("EPUB error: $error")),
+            );
           }
         },
       );
     } catch (e) {
       return _buildFallbackContent();
     }
+  }
+
+  Future<EpubBook> _loadEpubBook() async {
+    final file = File(_book.filePath!);
+    final bytes = await file.readAsBytes();
+    return await EpubReader.readBook(bytes);
   }
 
   Widget _buildReaderContent() {
@@ -393,7 +419,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           Positioned.fill(
             child: GestureDetector(
               onTapUp: _onTapReader,
-              behavior: HitTestBehavior.transparent,
+              behavior: HitTestBehavior.translucent,
             ),
           ),
       ],

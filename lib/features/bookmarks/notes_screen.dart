@@ -112,7 +112,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       controller: pageController,
                       decoration: const InputDecoration(
                         labelText: "Page number",
-                        prefixIcon: Icon(Icons.page_info_rounded),
+                        prefixIcon: Icon(Icons.tag_rounded),
                       ),
                       keyboardType: TextInputType.number,
                       onChanged: (v) {
