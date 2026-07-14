@@ -94,6 +94,10 @@ final fontSizeProvider = StateProvider<double>((ref) => 16.0);
 final marginProvider = StateProvider<double>((ref) => 16.0);
 final readerThemeProvider = StateProvider<String>((ref) => 'light');
 
+final publicProfileProvider = StateProvider<bool>((ref) => false);
+final syncMetadataProvider = StateProvider<bool>((ref) => true);
+final analyticsProvider = StateProvider<bool>((ref) => false);
+
 final settingsServiceProvider = Provider<SettingsService>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider).valueOrNull;
   if (prefs == null) {

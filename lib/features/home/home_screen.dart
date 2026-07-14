@@ -42,23 +42,22 @@ Future<void> _refreshDashboard(WidgetRef ref) async {
 Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
   final repo = ref.read(bookRepositoryProvider);
   final service = ImportService(repo);
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
   try {
     final imported = await service.pickAndImportBooks();
-    if (context.mounted) Navigator.of(context).pop();
-    await _refreshDashboard(ref);
-    if (context.mounted && imported.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Imported ${imported.length} book${imported.length == 1 ? "" : "s"}")),
-      );
+    if (context.mounted) {
+      ref.invalidate(allBooksProvider);
+      ref.invalidate(continueReadingProvider);
+      ref.invalidate(recentBooksProvider);
+      ref.invalidate(recentlyAddedBooksProvider);
+      ref.invalidate(totalBooksProvider);
+      ref.invalidate(totalPagesReadProvider);
+      if (imported.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Imported ${imported.length} book${imported.length == 1 ? "" : "s"}")),
+        );
+      }
     }
   } catch (e) {
-    if (context.mounted) Navigator.of(context).pop();
-    await _refreshDashboard(ref);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Import error: $e")));
     }
@@ -138,27 +137,59 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              if (continueReadingBooks.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                _SectionHeader(
-                  icon: Icons.timelapse_rounded,
-                  title: "Continue Reading",
-                  onTap: () => context.push(AppConstants.routeLibrary),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 200,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: continueReadingBooks.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: ContinueReadingCard(book: continueReadingBooks[index]),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionHeader(icon: Icons.timelapse_rounded, title: "Continue"),
+                        const SizedBox(height: 8),
+                        if (continueReadingBooks.isNotEmpty)
+                          SizedBox(
+                            height: 180,
+                            child: ListView.builder(
+                              scrollDirection: Axis.vertical,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: continueReadingBooks.length > 3 ? 3 : continueReadingBooks.length,
+                              itemBuilder: (context, index) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: ContinueReadingCard(book: continueReadingBooks[index]),
+                              ),
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text("No books in progress", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionHeader(icon: Icons.history_rounded, title: "Recent"),
+                        const SizedBox(height: 8),
+                        if (recentBooks.isNotEmpty)
+                          ...recentBooks.take(3).map((book) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _RecentBookRow(book: book),
+                          ))
+                        else
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text("No recent books", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               _SectionHeader(icon: Icons.bar_chart_rounded, title: "Reading Stats"),
               const SizedBox(height: 12),
               Row(
@@ -214,15 +245,6 @@ class HomeScreen extends ConsumerWidget {
                     },
                   ),
                 ),
-              ],
-              if (recentBooks.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                _SectionHeader(icon: Icons.history_rounded, title: "Recent Books", onTap: () => context.push(AppConstants.routeLibrary)),
-                const SizedBox(height: 12),
-                ...recentBooks.take(5).map((book) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _RecentBookRow(book: book),
-                )),
               ],
               if (allBooks.isEmpty) ...[
                 const SizedBox(height: 24),

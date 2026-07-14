@@ -673,9 +673,22 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
 
     final brightnessOpacity = (1.0 - _brightness) * 0.65;
 
+    Color themeOverlay = Colors.transparent;
+    if (_readerTheme == ReaderTheme.sepia) {
+      themeOverlay = const Color(0xFFF5E6C8).withOpacity(0.25);
+    } else if (_readerTheme == ReaderTheme.dark) {
+      themeOverlay = const Color(0xFF1A1A2E).withOpacity(0.55);
+    }
+
     return Stack(
       children: [
         content,
+        if (themeOverlay.opacity > 0.01)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(color: themeOverlay),
+            ),
+          ),
         if (brightnessOpacity > 0.01)
           Positioned.fill(
             child: IgnorePointer(

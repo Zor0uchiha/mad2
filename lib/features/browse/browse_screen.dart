@@ -35,7 +35,15 @@ class BrowseScreen extends ConsumerWidget {
     final allBooks = ref.watch(allBooksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Browse")),
+      appBar: AppBar(
+        title: const Text("Browse"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () => context.push(AppConstants.routeSearch),
+          ),
+        ],
+      ),
       body: allBooks.when(
         data: (books) {
           final trending = (List<BookModel>.from(books)..shuffle()).take(10).toList();

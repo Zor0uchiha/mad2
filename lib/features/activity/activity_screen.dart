@@ -20,6 +20,16 @@ final _readingGoalProvider = FutureProvider<ReadingGoalModel?>((ref) async {
   return goals.first;
 });
 
+final _readingDatesProvider = FutureProvider<Set<DateTime>>((ref) async {
+  final box = await StorageService.openReadingProgressBox();
+  final dates = <DateTime>{};
+  for (final progress in box.values) {
+    final d = progress.lastReadAt;
+    dates.add(DateTime(d.year, d.month, d.day));
+  }
+  return dates;
+});
+
 class _ActivityItem {
   final String bookTitle;
   final String action;
@@ -88,6 +98,7 @@ class ActivityScreen extends ConsumerWidget {
     final totalPages = ref.watch(totalPagesReadProvider).asData?.value ?? 0;
     final streak = ref.watch(_streakProvider).asData?.value ?? 0;
     final readingGoal = ref.watch(_readingGoalProvider).asData?.value;
+    final readingDates = ref.watch(_readingDatesProvider).asData?.value ?? {};
     final activityItems = _buildActivityItems(books);
     final finishedCount = books.where((b) => b.progress >= 1).length;
 
@@ -114,7 +125,7 @@ class ActivityScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             _SectionHeader(icon: Icons.calendar_month_rounded, title: "Monthly Heatmap"),
             const SizedBox(height: 12),
-            _buildHeatmap(context, streak),
+            _buildCalendar(context, streak, readingDates),
           ],
         ),
       ),
@@ -294,10 +305,105 @@ class ActivityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeatmap(BuildContext context, int streak) {
+  Widget _buildCalendar(BuildContext context, int streak, Set<DateTime> readingDates) {
     final theme = Theme.of(context);
     final now = DateTime.now();
-    final days = List.generate(28, (i) => now.subtract(Duration(days: 27 - i)));
+    final firstDay = DateTime(now.year, now.month, 1);
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final startWeekday = firstDay.weekday % 7;
+
+    final dayCells = <Widget>[];
+    for (int i = 0; i < startWeekday; i++) {
+      dayCells.add(const SizedBox(width: 28, height: 28));
+    }
+    for (int day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(now.year, now.month, day);
+      final isToday = date == DateTime(now.year, now.month, now.day);
+      final isFuture = date.isAfter(now);
+      final isActive = readingDates.contains(date);
+
+      Color cellColor;
+      Color textColor;
+      FontWeight fontWeight;
+
+      if (isToday) {
+        cellColor = AppColors.accent;
+        textColor = Colors.white;
+        fontWeight = FontWeight.bold;
+      } else if (isFuture) {
+        cellColor = Colors.transparent;
+        textColor = AppColors.textSecondary.withOpacity(0.3);
+        fontWeight = FontWeight.normal;
+      } else if (isActive) {
+        cellColor = AppColors.accent.withOpacity(0.3);
+        textColor = AppColors.textPrimary;
+        fontWeight = FontWeight.normal;
+      } else {
+        cellColor = AppColors.border;
+        textColor = AppColors.textSecondary;
+        fontWeight = FontWeight.normal;
+      }
+
+      dayCells.add(Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: cellColor,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: Text(
+            "$day",
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: fontWeight,
+              color: textColor,
+            ),
+          ),
+        ),
+      ));
+    }
+
+    final rows = <Widget>[];
+    for (int i = 0; i < dayCells.length; i += 7) {
+      final end = i + 7 > dayCells.length ? dayCells.length : i + 7;
+      final rowCells = dayCells.sublist(i, end);
+      while (rowCells.length < 7) {
+        rowCells.add(const SizedBox(width: 28, height: 28));
+      }
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: rowCells,
+          ),
+        ),
+      );
+    }
+
+    const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
+    final headerRow = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: weekdays.map((d) => SizedBox(
+        width: 28,
+        child: Center(
+          child: Text(
+            d,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      )).toList(),
+    );
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
 
     return Card(
       elevation: 0,
@@ -314,7 +420,7 @@ class ActivityScreen extends ConsumerWidget {
                 Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.accent),
                 const SizedBox(width: 8),
                 Text(
-                  "Reading Activity",
+                  monthNames[now.month - 1],
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -346,40 +452,9 @@ class ActivityScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: days.map((day) {
-                final isActive = day.day % 3 == 0 && day.isBefore(now);
-                final isToday = day.day == now.day &&
-                    day.month == now.month &&
-                    day.year == now.year;
-                return Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: isToday
-                        ? AppColors.accent
-                        : isActive
-                            ? AppColors.accent.withOpacity(0.3)
-                            : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "${day.day}",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                        color: isToday
-                            ? Colors.white
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+            headerRow,
+            const SizedBox(height: 8),
+            ...rows,
           ],
         ),
       ),

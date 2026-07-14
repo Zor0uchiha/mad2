@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -242,7 +243,7 @@ class AppTheme {
   }
 
   static String? _getFontFamily() {
-    return null;
+    return GoogleFonts.inter().fontFamily;
   }
 }
 

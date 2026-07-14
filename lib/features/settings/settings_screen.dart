@@ -7,6 +7,7 @@ import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/services/settings_service.dart";
+import "../../data/services/storage_service.dart";
 
 final _appInfoProvider = FutureProvider.autoDispose<PackageInfo>((ref) async {
   return PackageInfo.fromPlatform();
@@ -39,6 +40,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settings = ref.watch(settingsServiceProvider);
     final appInfo = ref.watch(_appInfoProvider);
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    final publicProfile = ref.watch(publicProfileProvider);
+    final syncMetadata = ref.watch(syncMetadataProvider);
+    final analytics = ref.watch(analyticsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
@@ -57,7 +61,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 SwitchListTile(
                   title: const Text("Dark Mode"),
                   subtitle: const Text("Use dark theme"),
-                  secondary: Icon(settings.themeMode == ThemeMode.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded),
+                  secondary: Icon(settings.themeMode == ThemeMode.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, color: AppColors.accent),
                   value: settings.themeMode == ThemeMode.dark,
                   onChanged: (v) {
                     ref.read(themeModeProvider.notifier).state = v ? ThemeMode.dark : ThemeMode.light;
@@ -66,7 +70,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.palette_rounded),
+                  leading: const Icon(Icons.palette_rounded, color: AppColors.accent),
                   title: const Text("Accent Color"),
                   subtitle: Text(_accentColorName(settings.seedColor)),
                   trailing: Row(
@@ -85,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.text_fields_rounded),
+                  leading: const Icon(Icons.text_fields_rounded, color: AppColors.accent),
                   title: const Text("Font Scale"),
                   subtitle: Text("${_fontScale.toStringAsFixed(1)}x"),
                   trailing: SizedBox(
@@ -95,6 +99,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       min: 0.7,
                       max: 1.5,
                       divisions: 8,
+                      activeColor: AppColors.accent,
                       label: _fontScale.toStringAsFixed(1),
                       onChanged: (v) {
                         setState(() => _fontScale = v);
@@ -117,7 +122,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.format_size_rounded),
+                  leading: const Icon(Icons.format_size_rounded, color: AppColors.accent),
                   title: const Text("Default Font Size"),
                   subtitle: Text("${_fontSize.toInt()}pt"),
                   trailing: SizedBox(
@@ -127,6 +132,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       min: 12,
                       max: 24,
                       divisions: 12,
+                      activeColor: AppColors.accent,
                       label: "${_fontSize.toInt()}pt",
                       onChanged: (v) {
                         setState(() => _fontSize = v);
@@ -137,7 +143,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.brightness_medium_rounded),
+                  leading: const Icon(Icons.brightness_medium_rounded, color: AppColors.accent),
                   title: const Text("Brightness"),
                   subtitle: Text("${(_brightness * 100).toInt()}%"),
                   trailing: SizedBox(
@@ -147,6 +153,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       min: 0.1,
                       max: 1.0,
                       divisions: 9,
+                      activeColor: AppColors.accent,
                       label: "${(_brightness * 100).toInt()}%",
                       onChanged: (v) {
                         setState(() => _brightness = v);
@@ -157,7 +164,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.space_bar_rounded),
+                  leading: const Icon(Icons.space_bar_rounded, color: AppColors.accent),
                   title: const Text("Margins"),
                   subtitle: Text("${_margin.toInt()}px"),
                   trailing: SizedBox(
@@ -167,6 +174,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       min: 8,
                       max: 32,
                       divisions: 6,
+                      activeColor: AppColors.accent,
                       label: "${_margin.toInt()}px",
                       onChanged: (v) {
                         setState(() => _margin = v);
@@ -191,25 +199,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 SwitchListTile(
                   title: const Text("Public Profile"),
                   subtitle: const Text("Allow others to see your reading activity"),
-                  secondary: const Icon(Icons.public_rounded),
-                  value: true,
-                  onChanged: (v) {},
+                  secondary: const Icon(Icons.public_rounded, color: AppColors.accent),
+                  value: publicProfile,
+                  onChanged: (v) async {
+                    ref.read(publicProfileProvider.notifier).state = v;
+                    final prefs = await ref.read(sharedPreferencesProvider.future);
+                    await prefs.setBool('public_profile', v);
+                  },
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 SwitchListTile(
                   title: const Text("Sync Metadata"),
                   subtitle: const Text("Sync reading progress and bookmarks"),
-                  secondary: const Icon(Icons.sync_rounded),
-                  value: true,
-                  onChanged: (v) {},
+                  secondary: const Icon(Icons.sync_rounded, color: AppColors.accent),
+                  value: syncMetadata,
+                  onChanged: (v) async {
+                    ref.read(syncMetadataProvider.notifier).state = v;
+                    final prefs = await ref.read(sharedPreferencesProvider.future);
+                    await prefs.setBool('sync_metadata', v);
+                  },
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 SwitchListTile(
                   title: const Text("Analytics"),
                   subtitle: const Text("Help improve Libora with usage data"),
-                  secondary: const Icon(Icons.analytics_rounded),
-                  value: false,
-                  onChanged: (v) {},
+                  secondary: const Icon(Icons.analytics_rounded, color: AppColors.accent),
+                  value: analytics,
+                  onChanged: (v) async {
+                    ref.read(analyticsProvider.notifier).state = v;
+                    final prefs = await ref.read(sharedPreferencesProvider.future);
+                    await prefs.setBool('analytics', v);
+                  },
                 ),
               ],
             ),
@@ -225,7 +245,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.person_rounded),
+                  leading: const Icon(Icons.person_rounded, color: AppColors.accent),
                   title: const Text("Profile"),
                   subtitle: const Text("Edit your profile information"),
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -234,7 +254,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (!isAuthenticated) ...[
                   Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                   ListTile(
-                    leading: const Icon(Icons.login_rounded),
+                    leading: const Icon(Icons.login_rounded, color: AppColors.accent),
                     title: const Text("Sign In / Sign Up"),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => context.push(AppConstants.routeAuth),
@@ -263,19 +283,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.cleaning_services_rounded),
+                  leading: const Icon(Icons.cleaning_services_rounded, color: AppColors.accent),
                   title: const Text("Clear Cache"),
                   subtitle: const Text("Free up storage space"),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {},
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Clear Cache"),
+                        content: const Text("This will clear all cached data. Your books and reading data will not be affected."),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Clear")),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && context.mounted) {
+                      await StorageService.clearAll();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Cache cleared successfully")),
+                        );
+                      }
+                    }
+                  },
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.download_rounded),
+                  leading: const Icon(Icons.download_rounded, color: AppColors.accent),
                   title: const Text("Export Data"),
                   subtitle: const Text("Export your reading data"),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {},
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Export Data"),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.code_rounded),
+                              title: const Text("Export as JSON"),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.table_chart_rounded),
+                              title: const Text("Export as CSV"),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -292,30 +358,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 appInfo.when(
                   data: (info) => ListTile(
-                    leading: const Icon(Icons.info_rounded),
+                    leading: const Icon(Icons.info_rounded, color: AppColors.accent),
                     title: const Text("Version"),
                     subtitle: Text("${info.version} (${info.buildNumber})"),
                   ),
-                  loading: () => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: const Text("...")),
-                  error: (_, __) => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: Text(AppConstants.appVersion)),
+                  loading: () => ListTile(
+                    leading: const Icon(Icons.info_rounded, color: AppColors.accent),
+                    title: const Text("Version"),
+                    subtitle: const Text("..."),
+                  ),
+                  error: (_, __) => ListTile(
+                    leading: const Icon(Icons.info_rounded, color: AppColors.accent),
+                    title: const Text("Version"),
+                    subtitle: Text(AppConstants.appVersion),
+                  ),
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.description_rounded),
+                  leading: const Icon(Icons.description_rounded, color: AppColors.accent),
                   title: const Text("Open Source Licenses"),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => showLicensePage(context: context),
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.privacy_tip_rounded),
+                  leading: const Icon(Icons.privacy_tip_rounded, color: AppColors.accent),
                   title: const Text("Privacy Policy"),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _launchUrl("https://libora.app/privacy"),
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.article_rounded),
+                  leading: const Icon(Icons.article_rounded, color: AppColors.accent),
                   title: const Text("Terms of Service"),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _launchUrl("https://libora.app/terms"),
@@ -330,6 +404,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   String _accentColorName(Color color) {
+    if (color == const Color(0xFFE53935)) return "Crimson";
     if (color == const Color(0xFF1A73E8)) return "Blue";
     if (color == const Color(0xFF34A853)) return "Green";
     if (color == const Color(0xFFEA4335)) return "Red";
@@ -337,11 +412,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (color == const Color(0xFF7C4DFF)) return "Purple";
     if (color == const Color(0xFFFF6D00)) return "Orange";
     if (color == const Color(0xFFE91E63)) return "Pink";
+    if (color == const Color(0xFF00BCD4)) return "Cyan";
     return "Custom";
   }
 
   void _showAccentColorPicker(SettingsService settings) {
     final colors = [
+      const Color(0xFFE53935),
       const Color(0xFF1A73E8),
       const Color(0xFF34A853),
       const Color(0xFFEA4335),
