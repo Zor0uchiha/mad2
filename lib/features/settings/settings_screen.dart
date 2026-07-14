@@ -70,25 +70,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
                 ListTile(
-                  leading: const Icon(Icons.palette_rounded, color: AppColors.accent),
-                  title: const Text("Accent Color"),
-                  subtitle: Text(_accentColorName(settings.seedColor)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(color: settings.seedColor, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.chevron_right_rounded),
-                    ],
-                  ),
-                  onTap: () => _showAccentColorPicker(settings),
-                ),
-                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
-                ListTile(
                   leading: const Icon(Icons.text_fields_rounded, color: AppColors.accent),
                   title: const Text("Font Scale"),
                   subtitle: Text("${_fontScale.toStringAsFixed(1)}x"),
@@ -104,6 +85,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onChanged: (v) {
                         setState(() => _fontScale = v);
                         settings.setFontScale(v);
+                        ref.read(fontScaleProvider.notifier).setFontScale(v);
                       },
                     ),
                   ),
@@ -399,65 +381,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-
-  String _accentColorName(Color color) {
-    if (color == const Color(0xFFE53935)) return "Crimson";
-    if (color == const Color(0xFF1A73E8)) return "Blue";
-    if (color == const Color(0xFF34A853)) return "Green";
-    if (color == const Color(0xFFEA4335)) return "Red";
-    if (color == const Color(0xFFFBBC04)) return "Yellow";
-    if (color == const Color(0xFF7C4DFF)) return "Purple";
-    if (color == const Color(0xFFFF6D00)) return "Orange";
-    if (color == const Color(0xFFE91E63)) return "Pink";
-    if (color == const Color(0xFF00BCD4)) return "Cyan";
-    return "Custom";
-  }
-
-  void _showAccentColorPicker(SettingsService settings) {
-    final colors = [
-      const Color(0xFFE53935),
-      const Color(0xFF1A73E8),
-      const Color(0xFF34A853),
-      const Color(0xFFEA4335),
-      const Color(0xFFFBBC04),
-      const Color(0xFF7C4DFF),
-      const Color(0xFFFF6D00),
-      const Color(0xFFE91E63),
-      const Color(0xFF00BCD4),
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Accent Color"),
-        content: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: colors.map((c) {
-            final selected = settings.seedColor == c;
-            return GestureDetector(
-              onTap: () {
-                settings.setSeedColor(c);
-                ref.read(seedColorProvider.notifier).state = c;
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: selected ? Border.all(color: Colors.white, width: 3) : null,
-                  boxShadow: selected ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8, spreadRadius: 1)] : null,
-                ),
-                child: selected ? const Icon(Icons.check_rounded, color: Colors.white) : null,
-              ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }

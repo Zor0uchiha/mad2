@@ -1,6 +1,6 @@
 class AppConstants {
   static const String appName = "Libora";
-  static const String appVersion = "1.0.0";
+  static const String appVersion = "1.3.41";
   static const String googleBooksApiBaseUrl = "https://www.googleapis.com/books/v1/volumes";
 
   static const int splashDelayMs = 2000;

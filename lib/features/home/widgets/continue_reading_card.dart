@@ -1,6 +1,8 @@
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "../../../core/constants/app_constants.dart";
+import "../../../core/theme/app_colors.dart";
 import "../../../data/models/book_model.dart";
 
 class ContinueReadingCard extends StatelessWidget {
@@ -11,67 +13,45 @@ class ContinueReadingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
-      child: Container(
-        width: 140,
-        margin: const EdgeInsets.only(right: 12),
-        child: Column(
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    return Card(
+      color: AppColors.cardDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: Container(
+          width: 44,
+          height: 60,
+          decoration: BoxDecoration(
+            color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: hasCover
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent)),
+                )
+              : Icon(Icons.menu_book_rounded, color: AppColors.accent),
+        ),
+        title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.menu_book_rounded,
-                    size: 48,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              book.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              book.author,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            SizedBox(height: 6),
+            Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 4),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: book.progress,
-                minHeight: 4,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              "${(book.progress * 100).toInt()}%",
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(value: book.progress.clamp(0.0, 1.0), minHeight: 3, backgroundColor: AppColors.border),
             ),
           ],
         ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+          child: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600)),
+        ),
+        onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       ),
     );
   }

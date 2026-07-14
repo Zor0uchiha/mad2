@@ -1,3 +1,4 @@
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
@@ -141,50 +142,58 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionHeader(icon: Icons.timelapse_rounded, title: "Continue"),
-                        const SizedBox(height: 8),
-                        if (continueReadingBooks.isNotEmpty)
-                          SizedBox(
-                            height: 180,
-                            child: ListView.builder(
-                              scrollDirection: Axis.vertical,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: continueReadingBooks.length > 3 ? 3 : continueReadingBooks.length,
-                              itemBuilder: (context, index) => Padding(
+                    child: Card(
+                      color: AppColors.cardDark,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionHeader(icon: Icons.timelapse_rounded, title: "Continue"),
+                            const SizedBox(height: 8),
+                            if (continueReadingBooks.isNotEmpty)
+                              ...continueReadingBooks.take(3).map((book) => Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: ContinueReadingCard(book: continueReadingBooks[index]),
+                                child: ContinueReadingCard(book: book),
+                              ))
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text("No books in progress", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                               ),
-                            ),
-                          )
-                        else
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text("No books in progress", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionHeader(icon: Icons.history_rounded, title: "Recent"),
-                        const SizedBox(height: 8),
-                        if (recentBooks.isNotEmpty)
-                          ...recentBooks.take(3).map((book) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _RecentBookRow(book: book),
-                          ))
-                        else
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text("No recent books", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                          ),
-                      ],
+                    child: Card(
+                      color: AppColors.cardDark,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionHeader(icon: Icons.history_rounded, title: "Recent"),
+                            const SizedBox(height: 8),
+                            if (recentBooks.isNotEmpty)
+                              ...recentBooks.take(3).map((book) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _RecentBookRow(book: book),
+                              ))
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text("No recent books", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -402,6 +411,7 @@ class _SmallBookCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       child: Card(
@@ -418,12 +428,15 @@ class _SmallBookCard extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.1),
+                    color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Center(
-                    child: Icon(Icons.menu_book_rounded, size: 36, color: AppColors.accent),
-                  ),
+                  child: hasCover
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 36, color: AppColors.accent)),
+                        )
+                      : Center(child: Icon(Icons.menu_book_rounded, size: 36, color: AppColors.accent)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -445,6 +458,7 @@ class _RecentBookRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
     return Card(
       color: AppColors.cardDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -454,8 +468,13 @@ class _RecentBookRow extends StatelessWidget {
         leading: Container(
           width: 44,
           height: 60,
-          decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-          child: Icon(Icons.menu_book_rounded, color: AppColors.accent),
+          decoration: BoxDecoration(color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+          child: hasCover
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent)),
+                )
+              : Icon(Icons.menu_book_rounded, color: AppColors.accent),
         ),
         title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
         subtitle: Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),

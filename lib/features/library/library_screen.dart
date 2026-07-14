@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
@@ -7,6 +8,7 @@ import "../../core/theme/app_colors.dart";
 import "../../core/theme/app_theme.dart";
 import "../../core/constants/app_constants.dart";
 import "../../data/models/book_model.dart";
+import "../../data/models/collection_model.dart";
 import "../../data/services/share_service.dart";
 import "../../data/services/import_service.dart";
 
@@ -129,6 +131,62 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       const Duration(milliseconds: 300),
       _loadBooks,
     );
+  }
+
+  void _showCreateCollectionDialog() {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Create Collection"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: "Collection Name"),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: "Description (optional)"),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) return;
+              final collection = CollectionModel(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: nameController.text.trim(),
+                description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+                colorValue: AppColors.accent.value,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              await ref.read(collectionsProvider).addCollection(collection);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Collection "${collection.name}" created')),
+                );
+                ref.invalidate(allCollectionsProvider);
+              }
+            },
+            child: const Text("Create"),
+          ),
+        ],
+      ),
+    ).then((_) {
+      nameController.dispose();
+      descController.dispose();
+    });
   }
 
   Future<void> _refreshDashboard() async {
@@ -585,6 +643,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           _buildFilterChip("PDF", _BookFilter.pdf),
                           _buildFilterChip("EPUB", _BookFilter.epub),
                           _buildFilterChip("Recently Added", _BookFilter.recentlyAdded),
+                          const SizedBox(width: 4),
+                          ActionChip(
+                            avatar: const Icon(Icons.add_rounded, size: 16),
+                            label: const Text("Collection"),
+                            onPressed: () => _showCreateCollectionDialog(),
+                          ),
                         ],
                       ),
                     ),
@@ -623,7 +687,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       sliver: SliverGrid(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.72,
+                          childAspectRatio: 0.68,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -715,95 +779,83 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   Widget _buildGridCard(BookModel book, ThemeData theme) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       onLongPress: () => _showBookActions(book),
-      child: Card(
-        color: AppColors.cardDark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                color: AppColors.accent.withOpacity(0.1),
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Center(
-                      child: Icon(
-                        Icons.menu_book_rounded,
-                        size: 48,
-                        color: AppColors.accent.withOpacity(0.5),
-                      ),
-                    ),
-                    if (book.progress > 0)
-                      Container(
-                        height: 4,
-                        width: double.infinity,
-                        color: AppColors.cardDark,
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: book.progress.clamp(0.0, 1.0),
-                          child: Container(
-                            color: AppColors.accent,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Card(
+              color: AppColors.cardDark,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              clipBehavior: Clip.antiAlias,
+              margin: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    book.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    book.author,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (book.progress > 0) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "${(book.progress * 100).toInt()}%",
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
+                      child: Stack(
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          hasCover
+                              ? Image.file(File(book.coverPath!), fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 48, color: AppColors.accent.withOpacity(0.5)))
+                              : Center(child: Icon(Icons.menu_book_rounded, size: 48, color: AppColors.accent.withOpacity(0.5))),
+                          if (book.progress > 0)
+                            Container(
+                              height: 4,
+                              width: double.infinity,
+                              color: AppColors.cardDark,
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: book.progress.clamp(0.0, 1.0),
+                                child: Container(color: AppColors.accent),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                        if (book.progress > 0) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                            child: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 11)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          ),
+          Container(
+            height: 6,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A1F0E).withOpacity(0.25),
+              borderRadius: BorderRadius.circular(3),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 2, offset: const Offset(0, 1)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -827,14 +879,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 width: 48,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.1),
+                  color: book.coverPath != null && book.coverPath!.isNotEmpty ? Colors.transparent : AppColors.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.menu_book_rounded,
-                  color: AppColors.accent.withOpacity(0.5),
-                  size: 24,
-                ),
+                child: book.coverPath != null && book.coverPath!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent.withOpacity(0.5), size: 24)),
+                      )
+                    : Icon(Icons.menu_book_rounded, color: AppColors.accent.withOpacity(0.5), size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(

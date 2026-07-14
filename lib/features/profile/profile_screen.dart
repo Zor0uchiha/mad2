@@ -1,3 +1,4 @@
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
@@ -6,9 +7,20 @@ import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/user_model.dart";
 import "../../data/models/book_model.dart";
+import "../../data/services/storage_service.dart";
 
 final _profileUserProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
   return ref.watch(localUserProvider).valueOrNull;
+});
+
+final _profileReadingDatesProvider = FutureProvider<Set<DateTime>>((ref) async {
+  final box = await StorageService.openReadingProgressBox();
+  final dates = <DateTime>{};
+  for (final progress in box.values) {
+    final d = progress.lastReadAt;
+    dates.add(DateTime(d.year, d.month, d.day));
+  }
+  return dates;
 });
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -218,17 +230,85 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _ReadingCalendar extends StatelessWidget {
+class _ReadingCalendar extends ConsumerWidget {
   final int streak;
 
   const _ReadingCalendar({required this.streak});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final readingDates = ref.watch(_profileReadingDatesProvider).asData?.value ?? {};
     final now = DateTime.now();
-    final days = List.generate(28, (i) => now.subtract(Duration(days: 27 - i)));
-    final weekLabels = ["M", "T", "W", "T", "F", "S", "S"];
+    final firstDay = DateTime(now.year, now.month, 1);
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final startWeekday = firstDay.weekday % 7;
+
+    final dayCells = <Widget>[];
+    for (int i = 0; i < startWeekday; i++) {
+      dayCells.add(const SizedBox(width: 28, height: 28));
+    }
+    for (int day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(now.year, now.month, day);
+      final isToday = date == DateTime(now.year, now.month, now.day);
+      final isFuture = date.isAfter(now);
+      final isActive = readingDates.contains(date);
+
+      Color cellColor;
+      Color textColor;
+      FontWeight fontWeight;
+
+      if (isToday) {
+        cellColor = AppColors.accent;
+        textColor = Colors.white;
+        fontWeight = FontWeight.bold;
+      } else if (isFuture) {
+        cellColor = Colors.transparent;
+        textColor = AppColors.textSecondary.withOpacity(0.3);
+        fontWeight = FontWeight.normal;
+      } else if (isActive) {
+        cellColor = AppColors.accent.withOpacity(0.3);
+        textColor = AppColors.textPrimary;
+        fontWeight = FontWeight.normal;
+      } else {
+        cellColor = AppColors.border;
+        textColor = AppColors.textSecondary;
+        fontWeight = FontWeight.normal;
+      }
+
+      dayCells.add(Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(color: cellColor, borderRadius: BorderRadius.circular(6)),
+        child: Center(child: Text("$day", style: TextStyle(fontSize: 10, fontWeight: fontWeight, color: textColor))),
+      ));
+    }
+
+    final rows = <Widget>[];
+    for (int i = 0; i < dayCells.length; i += 7) {
+      final end = i + 7 > dayCells.length ? dayCells.length : i + 7;
+      final rowCells = dayCells.sublist(i, end);
+      while (rowCells.length < 7) {
+        rowCells.add(const SizedBox(width: 28, height: 28));
+      }
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: rowCells),
+      ));
+    }
+
+    const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
+    final headerRow = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: weekdays.map((d) => SizedBox(
+        width: 28,
+        child: Center(child: Text(d, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+      )).toList(),
+    );
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
 
     return Container(
       width: double.infinity,
@@ -244,7 +324,7 @@ class _ReadingCalendar extends StatelessWidget {
             children: [
               Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.accent),
               const SizedBox(width: 8),
-              Text("Reading Activity", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text(monthNames[now.month - 1], style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -264,51 +344,9 @@ class _ReadingCalendar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: weekLabels.map((l) => Container(
-                  height: 28,
-                  alignment: Alignment.center,
-                  child: Text(l, style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
-                )).toList(),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: days.map((day) {
-                    final isActive = day.day % 3 == 0 && day.isBefore(now);
-                    final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
-                    return Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? AppColors.accent
-                            : isActive
-                                ? AppColors.accent.withOpacity(0.3)
-                                : theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "${day.day}",
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                            color: isToday ? Colors.white : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
+          headerRow,
+          const SizedBox(height: 8),
+          ...rows,
         ],
       ),
     );
@@ -435,10 +473,15 @@ class _BooksTab extends StatelessWidget {
               width: 40,
               height: 52,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
+                color: book.coverPath != null && book.coverPath!.isNotEmpty ? Colors.transparent : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.menu_book_rounded, size: 24),
+              child: book.coverPath != null && book.coverPath!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.menu_book_rounded, size: 24)),
+                    )
+                  : const Icon(Icons.menu_book_rounded, size: 24),
             ),
             title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Column(

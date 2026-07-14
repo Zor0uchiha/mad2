@@ -35,6 +35,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
 
   double _fontSize = 16.0;
   double _brightness = 1.0;
+  double _fontScale = 1.0;
   ReaderTheme _readerTheme = ReaderTheme.light;
 
   int _readingSeconds = 0;
@@ -91,6 +92,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   Future<void> _loadBook() async {
     final book = await ref.read(booksProvider).getBook(widget.bookId);
     if (!mounted) return;
+
+    _fontScale = ref.read(fontScaleProvider);
+    _fontSize = 16.0 * _fontScale;
 
     if (book != null) {
       final progress =
@@ -162,6 +166,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     );
     await bookRepo.updateBook(updatedBook);
     _book = updatedBook;
+
+    if (_readingSeconds >= 60) {
+      await ref.read(userRepositoryProvider).updateReadingStreak();
+    }
   }
 
   void _goToPage(int page) {

@@ -1,7 +1,7 @@
 name: libora
 description: Privacy-first e-book reader with offline support
 publish_to: "none"
-version: 1.0.0+1
+version: 1.3.41+1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
