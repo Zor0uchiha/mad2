@@ -9,6 +9,8 @@ import "../../data/models/book_model.dart";
 import "../../data/models/collection_model.dart";
 import "../../data/models/reading_goal_model.dart";
 import "../../data/services/storage_service.dart";
+import "../../data/services/import_service.dart";
+import "../../data/repositories/local_repositories.dart";
 import "widgets/continue_reading_card.dart";
 import "widgets/quick_action_button.dart";
 import "widgets/stat_card.dart";
@@ -26,6 +28,68 @@ final streakProvider = FutureProvider<int>((ref) async {
   final user = box.values.isNotEmpty ? box.values.first : null;
   return user?.readingStreak ?? 0;
 });
+
+Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
+  final repo = ref.read(bookRepositoryProvider);
+  final service = ImportService(repo);
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+  try {
+    final imported = await service.pickAndImportBooks();
+    if (context.mounted) Navigator.of(context).pop();
+    if (context.mounted && imported.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Imported ${imported.length} book${imported.length == 1 ? "" : "s"}"),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.of(context).pop();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Import error: $e")),
+      );
+    }
+  }
+}
+
+Future<void> _scanDevice(BuildContext context, WidgetRef ref) async {
+  final repo = ref.read(bookRepositoryProvider);
+  final service = ImportService(repo);
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+  try {
+    final found = await service.scanDevice();
+    if (context.mounted) Navigator.of(context).pop();
+    if (context.mounted) {
+      if (found.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Found and imported ${found.length} book${found.length == 1 ? "" : "s"}"),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No new books found on device")),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.of(context).pop();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Scan error: $e")),
+      );
+    }
+  }
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -264,12 +328,12 @@ class HomeScreen extends ConsumerWidget {
                 QuickActionButton(
                   icon: Icons.upload_file_rounded,
                   label: "Import Book",
-                  onTap: () {},
+                  onTap: () => _importBooks(context, ref),
                 ),
                 QuickActionButton(
                   icon: Icons.phone_android_rounded,
                   label: "Scan Device",
-                  onTap: () {},
+                  onTap: () => _scanDevice(context, ref),
                 ),
                 QuickActionButton(
                   icon: Icons.explore_rounded,

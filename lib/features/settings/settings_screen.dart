@@ -8,6 +8,8 @@ import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/theme/app_theme.dart";
 import "../../data/services/settings_service.dart";
+import "../../data/services/import_service.dart";
+import "../../data/repositories/local_repositories.dart";
 
 final _appInfoProvider = FutureProvider.autoDispose<PackageInfo>((ref) async {
   return PackageInfo.fromPlatform();
@@ -202,7 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text("Scan Device for Books"),
             subtitle: const Text("Find local EPUB and PDF files"),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
+            onTap: () => _scanDeviceForBooks(context),
           ),
           ListTile(
             leading: const Icon(Icons.cleaning_services_rounded),
@@ -306,6 +308,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+  Future<void> _scanDeviceForBooks(BuildContext context) async {
+    final repo = ref.read(bookRepositoryProvider);
+    final service = ImportService(repo);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final found = await service.scanDevice();
+      if (context.mounted) Navigator.of(context).pop();
+      if (context.mounted) {
+        if (found.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Found and imported ${found.length} book${found.length == 1 ? "" : "s"}"),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No new books found on device")),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.of(context).pop();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Scan error: $e")),
+        );
+      }
     }
   }
 }
