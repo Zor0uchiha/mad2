@@ -7,6 +7,7 @@ import "../../core/constants/app_constants.dart";
 import "../../data/models/book_model.dart";
 import "../../data/repositories/local_repositories.dart";
 import "../../data/services/share_service.dart";
+import "../../data/services/import_service.dart";
 import "widgets/book_grid_tile.dart";
 import "widgets/book_list_tile.dart";
 
@@ -39,6 +40,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   _BookFilter _selectedFilter = _BookFilter.all;
   Timer? _debounce;
   bool _isLoading = false;
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -133,6 +135,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       const Duration(milliseconds: 300),
       _loadBooks,
     );
+  }
+
+  Future<void> _importBooks() async {
+    setState(() => _isImporting = true);
+    try {
+      final repo = ref.read(bookRepositoryProvider);
+      final service = ImportService(repo);
+      final imported = await service.pickAndImportBooks();
+      if (mounted && imported.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Imported ${imported.length} book${imported.length == 1 ? "" : "s"}"),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        _loadBooks();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Import error: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
   }
 
   Future<void> _toggleFavorite(BookModel book) async {
@@ -547,11 +575,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        icon: const Icon(Icons.add_rounded),
-        label: const Text("Import"),
-      ),
+      floatingActionButton: _isImporting
+          ? const FloatingActionButton.extended(
+              onPressed: null,
+              icon: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              label: Text("Importing..."),
+            )
+          : FloatingActionButton.extended(
+              onPressed: _importBooks,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text("Import"),
+            ),
     );
   }
 
