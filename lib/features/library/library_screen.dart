@@ -137,13 +137,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  void _invalidateDashboard() {
-    ref.invalidate(allBooksProvider);
-    ref.invalidate(continueReadingProvider);
-    ref.invalidate(recentBooksProvider);
-    ref.invalidate(recentlyAddedBooksProvider);
-    ref.invalidate(totalBooksProvider);
-    ref.invalidate(totalPagesReadProvider);
+  Future<void> _refreshDashboard() async {
+    await Future.wait([
+      ref.refresh(allBooksProvider.future),
+      ref.refresh(continueReadingProvider.future),
+      ref.refresh(recentBooksProvider.future),
+      ref.refresh(recentlyAddedBooksProvider.future),
+      ref.refresh(totalBooksProvider.future),
+      ref.refresh(totalPagesReadProvider.future),
+    ]);
   }
 
   Future<void> _importBooks() async {
@@ -152,7 +154,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       final repo = ref.read(bookRepositoryProvider);
       final service = ImportService(repo);
       final imported = await service.pickAndImportBooks();
-      _invalidateDashboard();
+      await _refreshDashboard();
       if (mounted && imported.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -29,13 +29,15 @@ final streakProvider = FutureProvider<int>((ref) async {
   return user?.readingStreak ?? 0;
 });
 
-void _invalidateDashboard(ref) {
-  ref.invalidate(allBooksProvider);
-  ref.invalidate(continueReadingProvider);
-  ref.invalidate(recentBooksProvider);
-  ref.invalidate(recentlyAddedBooksProvider);
-  ref.invalidate(totalBooksProvider);
-  ref.invalidate(totalPagesReadProvider);
+Future<void> _refreshDashboard(WidgetRef ref) async {
+  await Future.wait([
+    ref.refresh(allBooksProvider.future),
+    ref.refresh(continueReadingProvider.future),
+    ref.refresh(recentBooksProvider.future),
+    ref.refresh(recentlyAddedBooksProvider.future),
+    ref.refresh(totalBooksProvider.future),
+    ref.refresh(totalPagesReadProvider.future),
+  ]);
 }
 
 Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
@@ -49,7 +51,7 @@ Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
   try {
     final imported = await service.pickAndImportBooks();
     if (context.mounted) Navigator.of(context).pop();
-    _invalidateDashboard(ref);
+    await _refreshDashboard(ref);
     if (context.mounted && imported.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -59,6 +61,7 @@ Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) Navigator.of(context).pop();
+    await _refreshDashboard(ref);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Import error: $e")),
@@ -78,7 +81,7 @@ Future<void> _scanDevice(BuildContext context, WidgetRef ref) async {
   try {
     final found = await service.scanDevice();
     if (context.mounted) Navigator.of(context).pop();
-    _invalidateDashboard(ref);
+    await _refreshDashboard(ref);
     if (context.mounted) {
       if (found.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -94,6 +97,7 @@ Future<void> _scanDevice(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) Navigator.of(context).pop();
+    await _refreshDashboard(ref);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Scan error: $e")),
@@ -143,16 +147,44 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          _invalidateDashboard(ref);
-          await Future.delayed(const Duration(milliseconds: 100));
-        },
+        onRefresh: () => _refreshDashboard(ref),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _SectionHeader(
+                icon: Icons.flash_on_rounded,
+                title: "Quick Actions",
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  QuickActionButton(
+                    icon: Icons.upload_file_rounded,
+                    label: "Import Book",
+                    onTap: () => _importBooks(context, ref),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.phone_android_rounded,
+                    label: "Scan Device",
+                    onTap: () => _scanDevice(context, ref),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.explore_rounded,
+                    label: "Browse Books",
+                    onTap: () => context.push(AppConstants.routeBrowse),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.folder_open_rounded,
+                    label: "Collections",
+                    onTap: () => context.push(AppConstants.routeCollections),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
               if (continueReadingBooks.isNotEmpty) ...[
                 _SectionHeader(
                   icon: Icons.timelapse_rounded,
@@ -180,7 +212,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               if (recentBooks.isEmpty && allBooks.isEmpty)
-                _buildEmptyLibrary(theme, ref)
+                _buildEmptyLibrary(context, theme, ref)
               else if (recentBooks.isEmpty && allBooks.isNotEmpty)
                 _buildRecentEmpty(theme)
               else
@@ -214,7 +246,7 @@ class HomeScreen extends ConsumerWidget {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: recentlyAdded.length,
-                    itemBuilder: (context, index) => _SmallBookCard(
+                    itemBuilder: (BuildContext context, int index) => _SmallBookCard(
                       book: recentlyAdded[index],
                     ),
                   ),
@@ -222,7 +254,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
               ],
               _SectionHeader(
-                icon: Icons.bar_chart_rounded,
+                icon: Icons.bar_chat_rounded,
                 title: "Reading Statistics",
                 subtitle: "$inProgressCount in progress",
                 onTap: () => context.push(AppConstants.routeStatistics),
@@ -286,7 +318,7 @@ class HomeScreen extends ConsumerWidget {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: collections.length,
-                    itemBuilder: (context, index) {
+                    itemBuilder: (BuildContext context, int index) {
                       final col = collections[index];
                       return Container(
                         width: 140,
@@ -329,44 +361,13 @@ class HomeScreen extends ConsumerWidget {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: trending.length,
-                    itemBuilder: (context, index) => _SmallBookCard(
+                    itemBuilder: (BuildContext context, int index) => _SmallBookCard(
                       book: trending[index],
                     ),
                   ),
                 ),
                 const SizedBox(height: 28),
               ],
-              _SectionHeader(
-                icon: Icons.flash_on_rounded,
-                title: "Quick Actions",
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  QuickActionButton(
-                    icon: Icons.upload_file_rounded,
-                    label: "Import Book",
-                    onTap: () => _importBooks(context, ref),
-                  ),
-                  QuickActionButton(
-                    icon: Icons.phone_android_rounded,
-                    label: "Scan Device",
-                    onTap: () => _scanDevice(context, ref),
-                  ),
-                  QuickActionButton(
-                    icon: Icons.explore_rounded,
-                    label: "Browse Books",
-                    onTap: () => context.push(AppConstants.routeBrowse),
-                  ),
-                  QuickActionButton(
-                    icon: Icons.folder_open_rounded,
-                    label: "Collections",
-                    onTap: () => context.push(AppConstants.routeCollections),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -374,7 +375,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyLibrary(ThemeData theme, WidgetRef ref) {
+  Widget _buildEmptyLibrary(BuildContext context, ThemeData theme, WidgetRef ref) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
