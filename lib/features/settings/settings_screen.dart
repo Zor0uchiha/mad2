@@ -310,7 +310,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
-}
 
   Future<void> _scanDeviceForBooks(BuildContext context) async {
     final repo = ref.read(bookRepositoryProvider);
