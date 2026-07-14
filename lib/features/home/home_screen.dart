@@ -29,6 +29,15 @@ final streakProvider = FutureProvider<int>((ref) async {
   return user?.readingStreak ?? 0;
 });
 
+void _invalidateDashboard(ref) {
+  ref.invalidate(allBooksProvider);
+  ref.invalidate(continueReadingProvider);
+  ref.invalidate(recentBooksProvider);
+  ref.invalidate(recentlyAddedBooksProvider);
+  ref.invalidate(totalBooksProvider);
+  ref.invalidate(totalPagesReadProvider);
+}
+
 Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
   final repo = ref.read(bookRepositoryProvider);
   final service = ImportService(repo);
@@ -40,6 +49,7 @@ Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
   try {
     final imported = await service.pickAndImportBooks();
     if (context.mounted) Navigator.of(context).pop();
+    _invalidateDashboard(ref);
     if (context.mounted && imported.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -68,6 +78,7 @@ Future<void> _scanDevice(BuildContext context, WidgetRef ref) async {
   try {
     final found = await service.scanDevice();
     if (context.mounted) Navigator.of(context).pop();
+    _invalidateDashboard(ref);
     if (context.mounted) {
       if (found.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -131,223 +142,313 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (continueReadingBooks.isNotEmpty) ...[
-              _SectionTitle(
-                title: "Continue Reading",
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _invalidateDashboard(ref);
+          await Future.delayed(const Duration(milliseconds: 100));
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (continueReadingBooks.isNotEmpty) ...[
+                _SectionHeader(
+                  icon: Icons.timelapse_rounded,
+                  title: "Continue Reading",
+                  onTap: () => context.push(AppConstants.routeLibrary),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: continueReadingBooks.length,
+                    itemBuilder: (context, index) => ContinueReadingCard(
+                      book: continueReadingBooks[index],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+              _SectionHeader(
+                icon: Icons.history_rounded,
+                title: "Recent Books",
+                subtitle: "${allBooks.length} book${allBooks.length == 1 ? '' : 's'} in library",
                 onTap: () => context.push(AppConstants.routeLibrary),
               ),
-              SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: continueReadingBooks.length,
-                  itemBuilder: (context, index) => ContinueReadingCard(
-                    book: continueReadingBooks[index],
+              const SizedBox(height: 12),
+              if (recentBooks.isEmpty && allBooks.isEmpty)
+                _buildEmptyLibrary(theme, ref)
+              else if (recentBooks.isEmpty && allBooks.isNotEmpty)
+                _buildRecentEmpty(theme)
+              else
+                ...recentBooks.take(5).map(
+                  (book) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _RecentBookRow(book: book),
                   ),
                 ),
-              ),
-              SizedBox(height: 28),
-            ],
-            _SectionTitle(
-              title: "Recent Books",
-              onTap: () => context.push(AppConstants.routeLibrary),
-            ),
-            SizedBox(height: 12),
-            if (recentBooks.isEmpty)
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: theme.colorScheme.outlineVariant,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
+              if (recentBooks.isNotEmpty || allBooks.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
                   child: Center(
-                    child: Text(
-                      "No books yet. Import your first book!",
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    child: TextButton.icon(
+                      onPressed: () => context.push(AppConstants.routeLibrary),
+                      icon: const Icon(Icons.folder_open_rounded, size: 18),
+                      label: const Text("View All Books"),
                     ),
                   ),
                 ),
-              )
-            else
-              ...recentBooks.take(10).map(
-                    (book) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _RecentBookRow(book: book),
+              const SizedBox(height: 24),
+              if (recentlyAdded.isNotEmpty) ...[
+                _SectionHeader(
+                  icon: Icons.add_circle_outline_rounded,
+                  title: "Recently Added",
+                  onTap: () => context.push(AppConstants.routeLibrary),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 180,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: recentlyAdded.length,
+                    itemBuilder: (context, index) => _SmallBookCard(
+                      book: recentlyAdded[index],
                     ),
                   ),
-            SizedBox(height: 28),
-            if (recentlyAdded.isNotEmpty) ...[
-              _SectionTitle(
-                title: "Recently Added",
-                onTap: () => context.push(AppConstants.routeLibrary),
-              ),
-              SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: recentlyAdded.length,
-                  itemBuilder: (context, index) => _SmallBookCard(
-                    book: recentlyAdded[index],
-                  ),
                 ),
+                const SizedBox(height: 28),
+              ],
+              _SectionHeader(
+                icon: Icons.bar_chart_rounded,
+                title: "Reading Statistics",
+                subtitle: "$inProgressCount in progress",
+                onTap: () => context.push(AppConstants.routeStatistics),
               ),
-              SizedBox(height: 28),
-            ],
-            _SectionTitle(
-              title: "Reading Statistics",
-              onTap: () => context.push(AppConstants.routeStatistics),
-            ),
-            SizedBox(height: 12),
-            StatCard(
-              title: "Total Books",
-              value: "$totalBooks",
-              icon: Icons.menu_book_rounded,
-            ),
-            SizedBox(height: 12),
-            StatCard(
-              title: "Books Currently Reading",
-              value: "$inProgressCount",
-              icon: Icons.trending_up_rounded,
-              iconColor: theme.colorScheme.tertiary,
-            ),
-            SizedBox(height: 12),
-            StatCard(
-              title: "Pages Read",
-              value: "$totalPagesRead",
-              icon: Icons.chrome_reader_mode_rounded,
-              iconColor: AppColors.streak,
-            ),
-            SizedBox(height: 28),
-            if (readingGoal.asData?.value case final goal? when goal.targetBooks > 0) ...[
-              _ReadingGoalCard(goal: goal),
-              SizedBox(height: 28),
-            ],
-            _SectionTitle(
-              title: "Reading Streak",
-              onTap: () => context.push(AppConstants.routeStatistics),
-            ),
-            SizedBox(height: 12),
-            _StreakCard(streak: streak),
-            SizedBox(height: 28),
-            if (collections.isNotEmpty) ...[
-              _SectionTitle(
-                title: "Favorite Collections",
-                onTap: () => context.push(AppConstants.routeCollections),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: StatCard(
+                      title: "Total Books",
+                      value: "$totalBooks",
+                      icon: Icons.menu_book_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      title: "Books Reading",
+                      value: "$inProgressCount",
+                      icon: Icons.trending_up_rounded,
+                      iconColor: theme.colorScheme.tertiary,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 12),
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: collections.length,
-                  itemBuilder: (context, index) {
-                    final col = collections[index];
-                    return Container(
-                      width: 160,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: Color(col.colorValue),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            col.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
+              const SizedBox(height: 12),
+              StatCard(
+                title: "Pages Read",
+                value: "$totalPagesRead",
+                icon: Icons.chrome_reader_mode_rounded,
+                iconColor: AppColors.streak,
+              ),
+              const SizedBox(height: 28),
+              if (readingGoal.asData?.value case final goal? when goal.targetBooks > 0) ...[
+                _SectionHeader(
+                  icon: Icons.flag_rounded,
+                  title: "Reading Goal",
+                  onTap: () => context.push(AppConstants.routeStatistics),
+                ),
+                const SizedBox(height: 12),
+                _ReadingGoalCard(goal: goal),
+                const SizedBox(height: 28),
+              ],
+              _SectionHeader(
+                icon: Icons.local_fire_department_rounded,
+                title: "Reading Streak",
+                onTap: () => context.push(AppConstants.routeStatistics),
+              ),
+              const SizedBox(height: 12),
+              _StreakCard(streak: streak),
+              const SizedBox(height: 28),
+              if (collections.isNotEmpty) ...[
+                _SectionHeader(
+                  icon: Icons.collections_bookmark_rounded,
+                  title: "Collections",
+                  onTap: () => context.push(AppConstants.routeCollections),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 90,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: collections.length,
+                    itemBuilder: (context, index) {
+                      final col = collections[index];
+                      return Container(
+                        width: 140,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: Color(col.colorValue),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              col.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(height: 28),
-            ],
-            if (trending.isNotEmpty) ...[
-              _SectionTitle(
-                title: "Trending Books",
-                onTap: () => context.push(AppConstants.routeBrowse),
-              ),
-              SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: trending.length,
-                  itemBuilder: (context, index) => _SmallBookCard(
-                    book: trending[index],
+                      );
+                    },
                   ),
                 ),
-              ),
-              SizedBox(height: 28),
-            ],
-            if (recentlyReviewed.isNotEmpty) ...[
-              _SectionTitle(
-                title: "Recently Reviewed",
-                onTap: () => context.push(AppConstants.routeLibrary),
-              ),
-              SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: recentlyReviewed.length,
-                  itemBuilder: (context, index) => _SmallBookCard(
-                    book: recentlyReviewed[index],
-                  ),
-                ),
-              ),
-              SizedBox(height: 28),
-            ],
-            _SectionTitle(title: "Quick Actions", onTap: null),
-            SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                QuickActionButton(
-                  icon: Icons.upload_file_rounded,
-                  label: "Import Book",
-                  onTap: () => _importBooks(context, ref),
-                ),
-                QuickActionButton(
-                  icon: Icons.phone_android_rounded,
-                  label: "Scan Device",
-                  onTap: () => _scanDevice(context, ref),
-                ),
-                QuickActionButton(
-                  icon: Icons.explore_rounded,
-                  label: "Browse Books",
+                const SizedBox(height: 28),
+              ],
+              if (trending.isNotEmpty) ...[
+                _SectionHeader(
+                  icon: Icons.trending_up_rounded,
+                  title: "Trending Books",
                   onTap: () => context.push(AppConstants.routeBrowse),
                 ),
-                QuickActionButton(
-                  icon: Icons.folder_open_rounded,
-                  label: "Create Collection",
-                  onTap: () => context.push(AppConstants.routeCollections),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 180,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: trending.length,
+                    itemBuilder: (context, index) => _SmallBookCard(
+                      book: trending[index],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+              _SectionHeader(
+                icon: Icons.flash_on_rounded,
+                title: "Quick Actions",
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  QuickActionButton(
+                    icon: Icons.upload_file_rounded,
+                    label: "Import Book",
+                    onTap: () => _importBooks(context, ref),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.phone_android_rounded,
+                    label: "Scan Device",
+                    onTap: () => _scanDevice(context, ref),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.explore_rounded,
+                    label: "Browse Books",
+                    onTap: () => context.push(AppConstants.routeBrowse),
+                  ),
+                  QuickActionButton(
+                    icon: Icons.folder_open_rounded,
+                    label: "Collections",
+                    onTap: () => context.push(AppConstants.routeCollections),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyLibrary(ThemeData theme, WidgetRef ref) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        child: Column(
+          children: [
+            Icon(
+              Icons.menu_book_rounded,
+              size: 56,
+              color: theme.colorScheme.primary.withOpacity(0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Start Your Reading Journey",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Import books from your device or browse online\nto build your library",
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => _importBooks(context, ref),
+                  icon: const Icon(Icons.upload_file_rounded, size: 18),
+                  label: const Text("Import"),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _scanDevice(context, ref),
+                  icon: const Icon(Icons.search_rounded, size: 18),
+                  label: const Text("Scan"),
                 ),
               ],
             ),
-            SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentEmpty(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Open a book to start tracking your reading progress",
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -355,27 +456,50 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback? onTap;
 
-  const _SectionTitle({required this.title, this.onTap});
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Icon(icon, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
         Text(
           title,
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
+        if (subtitle != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            subtitle!,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        const Spacer(),
         if (onTap != null)
           TextButton(
             onPressed: onTap,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text("See All"),
           ),
       ],
@@ -394,30 +518,34 @@ class _SmallBookCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       child: Card(
-        elevation: 0,
+        elevation: 1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-          ),
         ),
         margin: const EdgeInsets.only(right: 12),
         child: Container(
-          width: 140,
+          width: 130,
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Center(
-                  child: Icon(
-                    Icons.menu_book_rounded,
-                    size: 40,
-                    color: theme.colorScheme.primary,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.menu_book_rounded,
+                      size: 36,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 book.title,
                 maxLines: 1,
@@ -426,7 +554,7 @@ class _SmallBookCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
                 book.author,
                 maxLines: 1,
@@ -455,9 +583,7 @@ class _RecentBookRow extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -488,11 +614,18 @@ class _RecentBookRow extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         trailing: book.progress > 0
-            ? Text(
-                "${(book.progress * 100).toInt()}%",
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "${(book.progress * 100).toInt()}%",
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               )
             : null,
@@ -512,12 +645,9 @@ class _ReadingGoalCard extends StatelessWidget {
     final theme = Theme.of(context);
     final progress = goal.overallProgress.clamp(0.0, 1.0);
     return Card(
-      elevation: 0,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant,
-        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -526,12 +656,20 @@ class _ReadingGoalCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.flag_rounded,
-                  color: AppColors.streak,
-                  size: 24,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.streak.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.flag_rounded,
+                    color: AppColors.streak,
+                    size: 22,
+                  ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   "Reading Goal",
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -540,7 +678,7 @@ class _ReadingGoalCard extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -550,7 +688,7 @@ class _ReadingGoalCard extends StatelessWidget {
                 color: AppColors.streak,
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -562,7 +700,7 @@ class _ReadingGoalCard extends StatelessWidget {
                 ),
                 Text(
                   "${(progress * 100).toInt()}%",
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -585,20 +723,17 @@ class _StreakCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant,
-        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: AppColors.streak.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(14),
@@ -609,7 +744,7 @@ class _StreakCard extends StatelessWidget {
                 size: 28,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -621,12 +756,17 @@ class _StreakCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  streak == 1 ? "Day Streak" : "Day Streak",
+                  "Day Streak",
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
+            ),
+            const Spacer(),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
         ),

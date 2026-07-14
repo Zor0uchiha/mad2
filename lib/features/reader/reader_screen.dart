@@ -670,9 +670,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       }
     }
 
+    final brightnessOpacity = (1.0 - _brightness) * 0.65;
+
     return Stack(
       children: [
         content,
+        if (brightnessOpacity > 0.01)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(color: Colors.black.withOpacity(brightnessOpacity)),
+            ),
+          ),
         if (_book.filePath != null && _book.filePath!.isNotEmpty)
           Positioned.fill(
             child: GestureDetector(

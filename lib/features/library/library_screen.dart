@@ -137,12 +137,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
+  void _invalidateDashboard() {
+    ref.invalidate(allBooksProvider);
+    ref.invalidate(continueReadingProvider);
+    ref.invalidate(recentBooksProvider);
+    ref.invalidate(recentlyAddedBooksProvider);
+    ref.invalidate(totalBooksProvider);
+    ref.invalidate(totalPagesReadProvider);
+  }
+
   Future<void> _importBooks() async {
     setState(() => _isImporting = true);
     try {
       final repo = ref.read(bookRepositoryProvider);
       final service = ImportService(repo);
       final imported = await service.pickAndImportBooks();
+      _invalidateDashboard();
       if (mounted && imported.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
