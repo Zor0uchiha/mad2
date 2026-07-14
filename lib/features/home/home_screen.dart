@@ -254,7 +254,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
               ],
               _SectionHeader(
-                icon: Icons.bar_chat_rounded,
+                icon: Icons.bar_chart_rounded,
                 title: "Reading Statistics",
                 subtitle: "$inProgressCount in progress",
                 onTap: () => context.push(AppConstants.routeStatistics),
