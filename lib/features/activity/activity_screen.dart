@@ -519,7 +519,7 @@ class _TimelineItem extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(right: 16, top: 8, bottom: isLast ? 8 : 4),
+              padding: EdgeInsets.only(right: 16, top: 8, bottom: isLast ? 8 : 4),
               child: Row(
                 children: [
                   Container(
@@ -544,12 +544,11 @@ class _TimelineItem extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: "${item.action} ",
-                                fontWeight: FontWeight.w500,
+                                style: TextStyle(fontWeight: FontWeight.w500),
                               ),
                               TextSpan(
                                 text: item.bookTitle,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accent,
+                                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
                               ),
                             ],
                           ),
