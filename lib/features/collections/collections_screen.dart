@@ -5,11 +5,30 @@ import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/collection_model.dart";
-import "../../data/repositories/local_repositories.dart";
-import "../../data/services/share_service.dart";
-import "widgets/collection_card.dart";
 
-enum CollectionSort { name, createdDate, bookCount }
+IconData _iconFromName(String? iconName) {
+  switch (iconName) {
+    case "favorite":
+      return Icons.favorite_rounded;
+    case "star":
+      return Icons.star_rounded;
+    case "book":
+      return Icons.menu_book_rounded;
+    case "library":
+      return Icons.library_books_rounded;
+    case "science":
+      return Icons.science_rounded;
+    case "history":
+      return Icons.history_rounded;
+    case "art":
+      return Icons.palette_rounded;
+    case "music":
+      return Icons.music_note_rounded;
+    case "folder":
+    default:
+      return Icons.folder_rounded;
+  }
+}
 
 class CollectionsScreen extends ConsumerStatefulWidget {
   const CollectionsScreen({super.key});
@@ -19,430 +38,169 @@ class CollectionsScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
-  CollectionSort _sort = CollectionSort.name;
+  Future<void> _refresh() async {
+    await ref.refresh(allCollectionsProvider.future);
+  }
 
   void _showCreateDialog() {
     final nameController = TextEditingController();
-    final descController = TextEditingController();
-    int selectedColor = AppColors.collectionColors[0].value;
-    String selectedIcon = "folder";
 
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text("New Collection"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: "Name",
-                    hintText: "Collection name",
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(
-                    labelText: "Description",
-                    hintText: "Optional description",
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                const Text("Icon", style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _iconOption("folder", Icons.folder_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("favorite", Icons.favorite_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("star", Icons.star_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("book", Icons.menu_book_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("library", Icons.library_books_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("science", Icons.science_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("history", Icons.history_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("art", Icons.palette_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("music", Icons.music_note_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text("Color", style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: AppColors.collectionColors.map((c) {
-                    final isSelected = c.value == selectedColor;
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => selectedColor = c.value),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: c,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.white, width: 3)
-                              : null,
-                          boxShadow: isSelected
-                              ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8)]
-                              : null,
-                        ),
-                        child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 18)
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text("Cancel"),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty) return;
-                final repo = ref.read(collectionsProvider);
-                await repo.addCollection(CollectionModel(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: name,
-                  description: descController.text.trim(),
-                  colorValue: selectedColor,
-                  iconName: selectedIcon,
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ));
-                if (ctx.mounted) Navigator.of(ctx).pop();
-              },
-              child: const Text("Create"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _iconOption(String name, IconData icon, String current, void Function(String) onSelected) {
-    final isSelected = name == current;
-    return GestureDetector(
-      onTap: () => onSelected(name),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
-          borderRadius: BorderRadius.circular(10),
-          border: isSelected ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null,
-        ),
-        child: Icon(icon, size: 22, color: isSelected ? Theme.of(context).colorScheme.primary : null),
-      ),
-    );
-  }
-
-  List<CollectionModel> _sorted(List<CollectionModel> collections) {
-    final sorted = List<CollectionModel>.from(collections);
-    switch (_sort) {
-      case CollectionSort.name:
-        sorted.sort((a, b) => a.name.compareTo(b.name));
-      case CollectionSort.createdDate:
-        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      case CollectionSort.bookCount:
-        sorted.sort((a, b) => b.bookCount.compareTo(a.bookCount));
-    }
-    return sorted;
-  }
-
-  void _showCollectionActions(CollectionModel collection) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Text(
-                collection.name,
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.edit_rounded),
-              title: const Text("Edit"),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showEditDialog(collection);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_rounded, color: Colors.red),
-              title: const Text("Delete", style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDelete(collection);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share_rounded),
-              title: const Text("Share"),
-              onTap: () {
-                Navigator.pop(ctx);
-                _shareCollection(collection);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showEditDialog(CollectionModel collection) {
-    final nameController = TextEditingController(text: collection.name);
-    final descController = TextEditingController(text: collection.description ?? "");
-    int selectedColor = collection.colorValue;
-    String selectedIcon = collection.iconName ?? "folder";
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text("Edit Collection"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: "Name"),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(
-                    labelText: "Description",
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                const Text("Icon", style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _iconOption("folder", Icons.folder_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("favorite", Icons.favorite_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("star", Icons.star_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("book", Icons.menu_book_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("library", Icons.library_books_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("science", Icons.science_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("history", Icons.history_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("art", Icons.palette_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                    _iconOption("music", Icons.music_note_rounded, selectedIcon, (v) => setDialogState(() => selectedIcon = v)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text("Color", style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: AppColors.collectionColors.map((c) {
-                    final isSelected = c.value == selectedColor;
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => selectedColor = c.value),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: c,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.white, width: 3)
-                              : null,
-                        ),
-                        child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 18)
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text("Cancel"),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty) return;
-                final updated = collection.copyWith(
-                  name: name,
-                  description: descController.text.trim(),
-                  colorValue: selectedColor,
-                  iconName: selectedIcon,
-                  updatedAt: DateTime.now(),
-                );
-                await ref.read(collectionsProvider).updateCollection(updated);
-                if (ctx.mounted) Navigator.of(ctx).pop();
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmDelete(CollectionModel collection) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Delete Collection"),
-        content: Text('Are you sure you want to delete "${collection.name}"?'),
+        title: const Text("New Collection"),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: "Name",
+            hintText: "Collection name",
+          ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Cancel"),
           ),
           FilledButton(
             onPressed: () async {
-              await ref.read(collectionsProvider).deleteCollection(collection.id);
-              if (ctx.mounted) Navigator.pop(ctx);
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              final repo = ref.read(collectionsProvider);
+              await repo.addCollection(CollectionModel(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: name,
+                colorValue: AppColors.collectionColors[
+                    DateTime.now().millisecondsSinceEpoch % AppColors.collectionColors.length]
+                    .value,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ));
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              if (mounted) _refresh();
             },
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
-            child: const Text("Delete"),
+            child: const Text("Create"),
           ),
         ],
       ),
     );
   }
 
-  void _shareCollection(CollectionModel collection) {
-    final text = 'Collection "${collection.name}" on Libora\n'
-        '${collection.bookCount} book${collection.bookCount == 1 ? "" : "s"}'
-        '${collection.description != null && collection.description!.isNotEmpty ? "\n${collection.description}" : ""}';
-    ShareService.shareText(text);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
-    final sorted = _sorted(collections);
-    final totalBooks = collections.fold<int>(0, (sum, c) => sum + c.bookCount);
+    final collectionsAsync = ref.watch(allCollectionsProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Collections"),
-        actions: [
-          PopupMenuButton<CollectionSort>(
-            icon: const Icon(Icons.sort_rounded),
-            tooltip: "Sort",
-            onSelected: (sort) => setState(() => _sort = sort),
-            itemBuilder: (context) => CollectionSort.values.map((sort) {
-              String label;
-              switch (sort) {
-                case CollectionSort.name:
-                  label = "Name";
-                case CollectionSort.createdDate:
-                  label = "Created Date";
-                case CollectionSort.bookCount:
-                  label = "Book Count";
-              }
-              final isSelected = _sort == sort;
-              return PopupMenuItem(
-                value: sort,
-                child: Row(
-                  children: [
-                    if (isSelected)
-                      Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
-                    else
-                      const SizedBox(width: 18),
-                    const SizedBox(width: 8),
-                    Text(label),
-                  ],
-                ),
-              );
-            }).toList(),
+      appBar: AppBar(title: const Text("Collections")),
+      body: collectionsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: AppColors.textSecondary.withOpacity(0.4)),
+              const SizedBox(height: 12),
+              Text("Something went wrong", style: theme.textTheme.titleSmall?.copyWith(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => ref.invalidate(allCollectionsProvider),
+                child: const Text("Retry"),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: collections.isEmpty
-          ? Center(
+        ),
+        data: (collections) {
+          if (collections.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.collections_bookmark_rounded,
-                      size: 64, color: Theme.of(context).colorScheme.primary),
+                  Icon(Icons.collections_bookmark_rounded, size: 64, color: AppColors.accent.withOpacity(0.4)),
                   const SizedBox(height: 16),
-                  Text("No collections yet",
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text("No collections yet", style: theme.textTheme.titleMedium?.copyWith(color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  Text("Create your first collection to organize books",
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  Text("Create your first collection to organize books", style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text("Create Collection"),
+                    onPressed: _showCreateDialog,
+                  ),
                 ],
               ),
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: Row(
-                    children: [
-                      Text(
-                        "$totalBooks book${totalBooks == 1 ? "" : "s"} across ${collections.length} collection${collections.length == 1 ? "" : "s"}",
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: GridView.builder(
+              padding: const EdgeInsets.all(16),
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: collections.length,
+              itemBuilder: (context, index) {
+                final collection = collections[index];
+                final color = Color(collection.colorValue);
+
+                return GestureDetector(
+                  onTap: () => context.push("${AppConstants.routeCollectionDetail}/${collection.id}"),
+                  child: Card(
+                    color: color.withOpacity(0.15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.9,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: sorted.length,
-                    itemBuilder: (context, index) {
-                      final collection = sorted[index];
-                      return GestureDetector(
-                        onLongPress: () => _showCollectionActions(collection),
-                        child: CollectionCard(
-                          collection: collection,
-                          onTap: () => context.push(
-                            "${AppConstants.routeCollectionDetail}/${collection.id}",
+                            child: Icon(
+                              _iconFromName(collection.iconName),
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                          const Spacer(),
+                          Text(
+                            collection.name,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${collection.bookCount} book${collection.bookCount == 1 ? "" : "s"}",
+                            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
-      floatingActionButton: FloatingActionButton.extended(
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
         onPressed: _showCreateDialog,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text("New Collection"),
+        tooltip: "New Collection",
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

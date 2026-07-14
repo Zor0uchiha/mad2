@@ -2,8 +2,20 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "../../core/theme/app_colors.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/providers.dart";
+
+class _OnboardingPageData {
+  final IconData icon;
+  final String title;
+  final String description;
+  const _OnboardingPageData({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+}
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -16,36 +28,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<_OnboardingPageData> _pages = [
+  final List<_OnboardingPageData> _pages = const [
     _OnboardingPageData(
       icon: Icons.privacy_tip_rounded,
       title: "Privacy First",
-      description:
-          "Your personal PDFs and EPUBs never leave your device. We respect your privacy — no uploads, no tracking.",
+      description: "Your books stay on your device.\nWe never upload your PDFs or EPUBs.",
     ),
     _OnboardingPageData(
       icon: Icons.wifi_off_rounded,
-      title: "Works Offline",
-      description:
-          "Read, bookmark, highlight, and organize your library even without an internet connection.",
-    ),
-    _OnboardingPageData(
-      icon: Icons.library_books_rounded,
-      title: "Organize Your Library",
-      description:
-          "Create collections, tag your books, sort by author or genre — build your perfect digital library.",
+      title: "Read Anywhere",
+      description: "Everything works offline.\nRead anywhere without internet.",
     ),
     _OnboardingPageData(
       icon: Icons.explore_rounded,
-      title: "Discover Books",
-      description:
-          "Browse our catalog of legally available books and add them to your reading list with one tap.",
-    ),
-    _OnboardingPageData(
-      icon: Icons.sync_rounded,
-      title: "Sync Across Devices",
-      description:
-          "Optional cloud sync keeps your reading progress, bookmarks, and library up to date everywhere.",
+      title: "Discover & Connect",
+      description: "Discover books.\nTrack reading.\nShare your reading journey.",
     ),
   ];
 
@@ -61,7 +58,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return;
       }
     } catch (_) {
-      // Firebase unavailable — go to home in local-only mode
       if (!mounted) return;
       context.go(AppConstants.routeHome);
       return;
@@ -80,6 +76,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: AppColors.surfaceDark,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -95,8 +92,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
-                  onPageChanged: (index) =>
-                      setState(() => _currentPage = index),
+                  onPageChanged: (index) => setState(() => _currentPage = index),
                   itemCount: _pages.length,
                   itemBuilder: (context, index) {
                     final page = _pages[index];
@@ -107,16 +103,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           width: 160,
                           height: 160,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(32),
+                            color: AppColors.accent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(24),
                           ),
                           child: Icon(
                             page.icon,
                             size: 80,
-                            color: theme.colorScheme.primary,
+                            color: AppColors.accent,
                           ),
                         ),
-                        SizedBox(height: 48),
+                        const SizedBox(height: 40),
                         Text(
                           page.title,
                           style: theme.textTheme.headlineSmall?.copyWith(
@@ -124,10 +120,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Text(
                           page.description,
-                          style: theme.textTheme.bodyLarge,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -148,8 +146,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         height: 8,
                         decoration: BoxDecoration(
                           color: _currentPage == index
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.outlineVariant,
+                              ? AppColors.accent
+                              : AppColors.textSecondary.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
@@ -172,22 +170,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
     );
   }
-}
-
-class _OnboardingPageData {
-  final IconData icon;
-  final String title;
-  final String description;
-  const _OnboardingPageData({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
 }

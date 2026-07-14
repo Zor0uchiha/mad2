@@ -155,9 +155,9 @@ class _ProfileHeader extends StatelessWidget {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 48,
-            backgroundColor: colorScheme.primaryContainer,
-            child: Icon(Icons.person_rounded, size: 48, color: colorScheme.onPrimaryContainer),
+            radius: 52,
+            backgroundColor: AppColors.cardDark,
+            child: Icon(Icons.person_rounded, size: 52, color: AppColors.accent),
           ),
           const SizedBox(height: 12),
           Text(user.displayName ?? "Reader", style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -166,16 +166,23 @@ class _ProfileHeader extends StatelessWidget {
             Text(user.bio!, style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
           ],
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _StatColumn(value: booksRead.toString(), label: "Books"),
-              _StatColumn(value: currentlyReading.toString(), label: "Reading"),
-              _StatColumn(value: finishedBooks.toString(), label: "Finished"),
-              _StatColumn(value: "$streak", label: "Streak"),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _StatColumn(value: booksRead.toString(), label: "Books"),
+                _StatColumn(value: currentlyReading.toString(), label: "Reading"),
+                _StatColumn(value: finishedBooks.toString(), label: "Finished"),
+                _StatColumn(value: "$streak", label: "Streak"),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -221,70 +228,88 @@ class _ReadingCalendar extends StatelessWidget {
     final theme = Theme.of(context);
     final now = DateTime.now();
     final days = List.generate(28, (i) => now.subtract(Duration(days: 27 - i)));
-    final today = now.weekday;
+    final weekLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.calendar_month_rounded, size: 18, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text("Reading Activity", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.streak.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.streak),
-                      const SizedBox(width: 4),
-                      Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.streak)),
-                    ],
-                  ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Text("Reading Activity", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.streak.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: days.map((day) {
-                final isActive = day.day % 3 == 0 && day.isBefore(now);
-                final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
-                return Container(
-                  width: 28,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.streak),
+                    const SizedBox(width: 4),
+                    Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.streak)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                children: weekLabels.map((l) => Container(
                   height: 28,
-                  decoration: BoxDecoration(
-                    color: isToday
-                        ? theme.colorScheme.primary
-                        : isActive
-                            ? theme.colorScheme.primaryContainer
-                            : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "${day.day}",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                        color: isToday ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+                  alignment: Alignment.center,
+                  child: Text(l, style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurfaceVariant)),
+                )).toList(),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: days.map((day) {
+                    final isActive = day.day % 3 == 0 && day.isBefore(now);
+                    final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
+                    return Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: isToday
+                            ? AppColors.accent
+                            : isActive
+                                ? AppColors.accent.withOpacity(0.3)
+                                : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
+                      child: Center(
+                        child: Text(
+                          "${day.day}",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                            color: isToday ? Colors.white : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -367,7 +392,7 @@ class _StatColumn extends StatelessWidget {
     final theme = Theme.of(context);
     return Column(
       children: [
-        Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppColors.accent)),
         Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
       ],
     );
@@ -398,20 +423,42 @@ class _BooksTab extends StatelessWidget {
       itemCount: books.length,
       itemBuilder: (context, index) {
         final book = books[index];
-        return ListTile(
-          leading: Container(
-            width: 36,
-            height: 48,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(Icons.menu_book_rounded, size: 24),
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(20),
           ),
-          title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text("${book.author} \u2022 ${(book.progress * 100).toInt()}%"),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: Container(
+              width: 40,
+              height: 52,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.menu_book_rounded, size: 24),
+            ),
+            title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("${book.author} \u2022 ${(book.progress * 100).toInt()}%", style: theme.textTheme.bodySmall),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: book.progress,
+                    minHeight: 4,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              ],
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+          ),
         );
       },
     );
@@ -487,21 +534,26 @@ class _AchievementsTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: achievements.map((a) {
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             leading: CircleAvatar(
-              backgroundColor: a.unlocked ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
+              backgroundColor: a.unlocked ? AppColors.accent.withOpacity(0.15) : theme.colorScheme.surfaceContainerHighest,
               child: Icon(
                 a.icon,
-                color: a.unlocked ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                color: a.unlocked ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
               ),
             ),
             title: Text(a.label, style: TextStyle(fontWeight: a.unlocked ? FontWeight.w600 : FontWeight.normal)),
             subtitle: Text(a.description, style: theme.textTheme.bodySmall),
             trailing: Icon(
               a.unlocked ? Icons.check_circle_rounded : Icons.lock_rounded,
-              color: a.unlocked ? Colors.green : theme.colorScheme.onSurfaceVariant,
+              color: a.unlocked ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
               size: 20,
             ),
           ),
@@ -547,12 +599,20 @@ class _CollectionsTab extends ConsumerWidget {
       itemCount: collections.length,
       itemBuilder: (context, index) {
         final c = collections[index];
-        return ListTile(
-          leading: CircleAvatar(backgroundColor: c.color, child: Icon(Icons.folder_rounded, color: Colors.white)),
-          title: Text(c.name),
-          subtitle: Text("${c.bookCount} books"),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => context.push("${AppConstants.routeCollectionDetail}/${c.id}"),
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: CircleAvatar(backgroundColor: c.color, child: Icon(Icons.folder_rounded, color: Colors.white)),
+            title: Text(c.name),
+            subtitle: Text("${c.bookCount} books"),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push("${AppConstants.routeCollectionDetail}/${c.id}"),
+          ),
         );
       },
     );
@@ -588,12 +648,23 @@ class _ListsTab extends ConsumerWidget {
       itemCount: lists.length,
       itemBuilder: (context, index) {
         final list = lists[index];
-        return ListTile(
-          leading: CircleAvatar(child: Icon(Icons.list_rounded)),
-          title: Text(list.title),
-          subtitle: Text("${list.bookCount} books"),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => context.push(AppConstants.routeReadingLists),
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: CircleAvatar(
+              backgroundColor: AppColors.accent.withOpacity(0.15),
+              child: Icon(Icons.list_rounded, color: AppColors.accent),
+            ),
+            title: Text(list.title),
+            subtitle: Text("${list.bookCount} books"),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push(AppConstants.routeReadingLists),
+          ),
         );
       },
     );

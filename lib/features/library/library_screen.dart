@@ -3,19 +3,16 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "../../core/providers.dart";
+import "../../core/theme/app_colors.dart";
+import "../../core/theme/app_theme.dart";
 import "../../core/constants/app_constants.dart";
 import "../../data/models/book_model.dart";
-import "../../data/repositories/local_repositories.dart";
 import "../../data/services/share_service.dart";
 import "../../data/services/import_service.dart";
-import "widgets/book_grid_tile.dart";
-import "widgets/book_list_tile.dart";
 
 enum LibrarySort {
   titleAsc("Title A-Z"),
-  titleDesc("Title Z-A"),
-  authorAsc("Author A-Z"),
-  authorDesc("Author Z-A"),
+  authorAsc("Author"),
   recent("Recent"),
   progress("Progress");
 
@@ -34,9 +31,10 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<BookModel> _filteredBooks = [];
   bool _isGridView = true;
-  LibrarySort _currentSort = LibrarySort.recent;
+  LibrarySort _currentSort = LibrarySort.titleAsc;
   _BookFilter _selectedFilter = _BookFilter.all;
   Timer? _debounce;
   bool _isLoading = false;
@@ -101,12 +99,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     switch (_currentSort) {
       case LibrarySort.titleAsc:
         books.sort((a, b) => a.title.compareTo(b.title));
-      case LibrarySort.titleDesc:
-        books.sort((a, b) => b.title.compareTo(a.title));
       case LibrarySort.authorAsc:
         books.sort((a, b) => a.author.compareTo(b.author));
-      case LibrarySort.authorDesc:
-        books.sort((a, b) => b.author.compareTo(a.author));
       case LibrarySort.recent:
         books.sort(
           (a, b) =>
@@ -480,6 +474,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -491,8 +486,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Library"),
+        title: const Text("Library"),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            tooltip: "Search",
+            onPressed: () => _searchController.text.isNotEmpty
+                ? _searchController.clear()
+                : null,
+          ),
+          const SizedBox(width: 4),
           PopupMenuButton<LibrarySort>(
             icon: const Icon(Icons.sort_rounded),
             tooltip: "Sort",
@@ -517,90 +520,151 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
             ).toList(),
           ),
-          IconButton(
-            onPressed: () => setState(() => _isGridView = !_isGridView),
-            icon: Icon(
-              _isGridView ? Icons.list_rounded : Icons.grid_view_rounded,
-            ),
-            tooltip: _isGridView ? "List view" : "Grid view",
-          ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search_rounded),
-                hintText: "Search by title, author, or tags...",
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildFilterChip("All", _BookFilter.all),
-                _buildFilterChip("Favorites", _BookFilter.favorites),
-                _buildFilterChip("Reading", _BookFilter.reading),
-                _buildFilterChip("Finished", _BookFilter.finished),
-                _buildFilterChip("PDF", _BookFilter.pdf),
-                _buildFilterChip("EPUB", _BookFilter.epub),
-                _buildFilterChip("Recently Added", _BookFilter.recentlyAdded),
-              ],
-            ),
-          ),
-          if (books.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    "${books.length} book${books.length == 1 ? "" : "s"}",
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+      body: RefreshIndicator(
+        onRefresh: _loadBooks,
+        child: _isLoading && books.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: SegmentedButton<bool>(
+                          segments: const [
+                            ButtonSegment(
+                              value: true,
+                              icon: Icon(Icons.grid_view_rounded, size: 18),
+                              tooltip: "Grid view",
+                            ),
+                            ButtonSegment(
+                              value: false,
+                              icon: Icon(Icons.list_rounded, size: 18),
+                              tooltip: "List view",
+                            ),
+                          ],
+                          selected: {_isGridView},
+                          onSelectionChanged: (val) =>
+                              setState(() => _isGridView = val.first),
+                          style: SegmentedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    _currentSort.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search_rounded),
+                          hintText: "Search by title, author, or tags...",
+                        ),
+                      ),
                     ),
                   ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 44,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          _buildFilterChip("All", _BookFilter.all),
+                          _buildFilterChip("Favorites", _BookFilter.favorites),
+                          _buildFilterChip("Reading", _BookFilter.reading),
+                          _buildFilterChip("Finished", _BookFilter.finished),
+                          _buildFilterChip("PDF", _BookFilter.pdf),
+                          _buildFilterChip("EPUB", _BookFilter.epub),
+                          _buildFilterChip("Recently Added", _BookFilter.recentlyAdded),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (books.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              "${books.length} book${books.length == 1 ? "" : "s"}",
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              _currentSort.label,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (books.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyState(theme),
+                    )
+                  else if (_isGridView)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.72,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final book = books[index];
+                            return _buildGridCard(book, theme);
+                          },
+                          childCount: books.length,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final book = books[index];
+                            return _buildListCard(book, theme);
+                          },
+                          childCount: books.length,
+                        ),
+                      ),
+                    ),
                 ],
               ),
-            ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : books.isEmpty
-                    ? _buildEmptyState(theme)
-                    : _isGridView
-                        ? _buildGridView(books)
-                        : _buildListView(books),
-          ),
-        ],
       ),
       floatingActionButton: _isImporting
-          ? const FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: null,
-              icon: SizedBox(
-                width: 20,
-                height: 20,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
-              label: Text("Importing..."),
             )
-          : FloatingActionButton.extended(
+          : FloatingActionButton(
               onPressed: _importBooks,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text("Import"),
+              tooltip: "Import books",
+              child: const Icon(Icons.upload_file_rounded),
             ),
     );
   }
@@ -650,136 +714,196 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Widget _buildGridView(List<BookModel> books) {
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: books.length,
-      itemBuilder: (context, index) {
-        final book = books[index];
-        return GestureDetector(
-          onLongPress: () => _showBookActions(book),
-          child: Stack(
-            children: [
-              BookGridTile(book: book),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  icon: Icon(
-                    book.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: book.isFavorite ? Colors.red : Colors.white70,
-                    size: 20,
-                  ),
-                  onPressed: () => _toggleFavorite(book),
+  Widget _buildGridCard(BookModel book, ThemeData theme) {
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: () => _showBookActions(book),
+      child: Card(
+        color: AppColors.cardDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                color: AppColors.accent.withOpacity(0.1),
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Center(
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        size: 48,
+                        color: AppColors.accent.withOpacity(0.5),
+                      ),
+                    ),
+                    if (book.progress > 0)
+                      Container(
+                        height: 4,
+                        width: double.infinity,
+                        color: AppColors.cardDark,
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: book.progress.clamp(0.0, 1.0),
+                          child: Container(
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    book.author,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (book.progress > 0) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "${(book.progress * 100).toInt()}%",
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildListView(List<BookModel> books) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      itemCount: books.length,
-      itemBuilder: (context, index) {
-        final book = books[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+  Widget _buildListCard(BookModel book, ThemeData theme) {
+    return Card(
+      color: AppColors.cardDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      ),
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+        onLongPress: () => _showBookActions(book),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
+              Container(
+                width: 48,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  color: AppColors.accent.withOpacity(0.5),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      book.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (book.progress > 0) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: book.progress.clamp(0.0, 1.0),
+                                minHeight: 3,
+                                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "${(book.progress * 100).toInt()}%",
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               IconButton(
                 icon: Icon(
                   book.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: book.isFavorite ? Colors.red : null,
+                  color: book.isFavorite ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
+                  size: 20,
                 ),
                 onPressed: () => _toggleFavorite(book),
               ),
-              Expanded(
-                child: BookListTile(book: book),
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                tooltip: "Actions",
-                onSelected: (value) => _handleListAction(book, value),
-                itemBuilder: (ctx) => [
-                  PopupMenuItem(
-                    value: "open",
-                    child: Row(
-                      children: [
-                        const Icon(Icons.open_in_new, size: 20),
-                        const SizedBox(width: 12),
-                        Text("Open Book"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "edit",
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit, size: 20),
-                        const SizedBox(width: 12),
-                        Text("Edit Metadata"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "collections",
-                    child: Row(
-                      children: [
-                        const Icon(Icons.collections_bookmark, size: 20),
-                        const SizedBox(width: 12),
-                        Text("Collections"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "favorite",
-                    child: Row(
-                      children: [
-                        Icon(
-                          book.isFavorite ? Icons.favorite : Icons.favorite_border,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(book.isFavorite ? "Unfavorite" : "Favorite"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "share",
-                    child: Row(
-                      children: [
-                        const Icon(Icons.share, size: 20),
-                        const SizedBox(width: 12),
-                        Text("Share"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: "delete",
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete_forever, size: 20, color: Colors.red),
-                        const SizedBox(width: 12),
-                        const Text("Remove", style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                size: 20,
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

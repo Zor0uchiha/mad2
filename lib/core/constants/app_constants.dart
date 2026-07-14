@@ -42,7 +42,10 @@ class AppConstants {
   static const String routeBookmarks = "/bookmarks";
   static const String routeReadingLists = "/reading-lists";
   static const String routeReadingListDetail = "/reading-list";
-  static const String routeReviews = "/reviews";
   static const String routeNotes = "/notes";
   static const String routeCreateNote = "/create-note";
+  static const String routeActivity = "/activity";
+  static const String routeNotifications = "/notifications";
+  static const String routeImport = "/import";
+  static const String routeReviewDetail = "/review";
 }

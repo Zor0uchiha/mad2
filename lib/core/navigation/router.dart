@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/auth/auth_screen.dart';
+import '../../features/shell/shell_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/library/library_screen.dart';
 import '../../features/collections/collections_screen.dart';
@@ -13,6 +14,7 @@ import '../../features/browse/browse_screen.dart';
 import '../../features/browse/book_detail_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/activity/activity_screen.dart';
 import '../../features/statistics/statistics_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/reader/reader_screen.dart';
@@ -39,13 +41,30 @@ final GoRouter router = GoRouter(
       path: AppConstants.routeAuth,
       builder: (context, state) => const AuthScreen(),
     ),
-    GoRoute(
-      path: AppConstants.routeHome,
-      builder: (context, state) => const HomeScreen(),
-    ),
-    GoRoute(
-      path: AppConstants.routeLibrary,
-      builder: (context, state) => const LibraryScreen(),
+    ShellRoute(
+      builder: (context, state, child) => ShellScreen(child: child),
+      routes: [
+        GoRoute(
+          path: AppConstants.routeHome,
+          builder: (context, state) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: AppConstants.routeLibrary,
+          builder: (context, state) => const LibraryScreen(),
+        ),
+        GoRoute(
+          path: AppConstants.routeBrowse,
+          builder: (context, state) => const BrowseScreen(),
+        ),
+        GoRoute(
+          path: AppConstants.routeActivity,
+          builder: (context, state) => const ActivityScreen(),
+        ),
+        GoRoute(
+          path: AppConstants.routeProfile,
+          builder: (context, state) => const ProfileScreen(),
+        ),
+      ],
     ),
     GoRoute(
       path: AppConstants.routeCollections,
@@ -59,10 +78,6 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: AppConstants.routeBrowse,
-      builder: (context, state) => const BrowseScreen(),
-    ),
-    GoRoute(
       path: "${AppConstants.routeBookDetail}/:bookId",
       builder: (context, state) {
         final bookId = state.pathParameters['bookId'] ?? '';
@@ -72,10 +87,6 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppConstants.routeSearch,
       builder: (context, state) => const SearchScreen(),
-    ),
-    GoRoute(
-      path: AppConstants.routeProfile,
-      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: AppConstants.routeStatistics,

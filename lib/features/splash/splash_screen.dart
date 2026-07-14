@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "../../core/theme/app_colors.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/providers.dart";
 
@@ -34,7 +35,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           return;
         }
       } catch (_) {
-        // Firebase unavailable — go to home in local-only mode
         if (!mounted) return;
         context.go(AppConstants.routeHome);
         return;
@@ -50,30 +50,38 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: AppColors.surfaceDark,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
               "assets/images/logo2.png",
-              width: 130,
-              height: 130,
+              width: 120,
+              height: 120,
               fit: BoxFit.contain,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
               AppConstants.appName,
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 48),
+            const SizedBox(height: 8),
+            Text(
+              "Your books. Your library. Always yours.",
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 48),
             SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2.5,
-                color: theme.colorScheme.primary,
+                color: AppColors.accent,
               ),
             ),
           ],

@@ -6,9 +6,7 @@ import "package:url_launcher/url_launcher.dart";
 import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
-import "../../core/theme/app_theme.dart";
 import "../../data/services/settings_service.dart";
-import "../../data/repositories/local_repositories.dart";
 
 final _appInfoProvider = FutureProvider.autoDispose<PackageInfo>((ref) async {
   return PackageInfo.fromPlatform();
@@ -25,6 +23,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _fontScale = 1.0;
   double _brightness = 0.8;
   double _margin = 16.0;
+  double _fontSize = 16.0;
 
   @override
   void initState() {
@@ -39,200 +38,290 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final colorScheme = theme.colorScheme;
     final settings = ref.watch(settingsServiceProvider);
     final appInfo = ref.watch(_appInfoProvider);
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         children: [
+          const SizedBox(height: 8),
           _SectionHeader(title: "Appearance"),
-          SwitchListTile(
-            title: const Text("Dark Mode"),
-            subtitle: const Text("Use dark theme"),
-            secondary: Icon(settings.themeMode == ThemeMode.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded),
-            value: settings.themeMode == ThemeMode.dark,
-            onChanged: (v) {
-              ref.read(themeModeProvider.notifier).state = v ? ThemeMode.dark : ThemeMode.light;
-              settings.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.palette_rounded),
-            title: const Text("Accent Color"),
-            subtitle: Text(_accentColorName(settings.seedColor)),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
               children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(color: settings.seedColor, shape: BoxShape.circle),
+                SwitchListTile(
+                  title: const Text("Dark Mode"),
+                  subtitle: const Text("Use dark theme"),
+                  secondary: Icon(settings.themeMode == ThemeMode.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded),
+                  value: settings.themeMode == ThemeMode.dark,
+                  onChanged: (v) {
+                    ref.read(themeModeProvider.notifier).state = v ? ThemeMode.dark : ThemeMode.light;
+                    settings.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                  },
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right_rounded),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.palette_rounded),
+                  title: const Text("Accent Color"),
+                  subtitle: Text(_accentColorName(settings.seedColor)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(color: settings.seedColor, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                  onTap: () => _showAccentColorPicker(settings),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.text_fields_rounded),
+                  title: const Text("Font Scale"),
+                  subtitle: Text("${_fontScale.toStringAsFixed(1)}x"),
+                  trailing: SizedBox(
+                    width: 160,
+                    child: Slider(
+                      value: _fontScale,
+                      min: 0.7,
+                      max: 1.5,
+                      divisions: 8,
+                      label: _fontScale.toStringAsFixed(1),
+                      onChanged: (v) {
+                        setState(() => _fontScale = v);
+                        settings.setFontScale(v);
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
-            onTap: () => _showAccentColorPicker(settings),
           ),
-          ListTile(
-            leading: const Icon(Icons.text_fields_rounded),
-            title: const Text("Font Scale"),
-            subtitle: Text("${_fontScale.toStringAsFixed(1)}x"),
-            trailing: SizedBox(
-              width: 160,
-              child: Slider(
-                value: _fontScale,
-                min: 0.7,
-                max: 1.5,
-                divisions: 8,
-                label: _fontScale.toStringAsFixed(1),
-                onChanged: (v) {
-                  setState(() => _fontScale = v);
-                  settings.setFontScale(v);
-                },
-              ),
-            ),
-          ),
-          const Divider(),
+          const SizedBox(height: 8),
           _SectionHeader(title: "Reading"),
-          ListTile(
-            leading: const Icon(Icons.format_size_rounded),
-            title: const Text("Default Font Size"),
-            trailing: SizedBox(
-              width: 160,
-              child: Slider(
-                value: _fontScale,
-                min: 0.7,
-                max: 1.5,
-                divisions: 8,
-                label: _fontScale.toStringAsFixed(1),
-                onChanged: (v) {
-                  setState(() => _fontScale = v);
-                },
-              ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.format_size_rounded),
+                  title: const Text("Default Font Size"),
+                  subtitle: Text("${_fontSize.toInt()}pt"),
+                  trailing: SizedBox(
+                    width: 160,
+                    child: Slider(
+                      value: _fontSize,
+                      min: 12,
+                      max: 24,
+                      divisions: 12,
+                      label: "${_fontSize.toInt()}pt",
+                      onChanged: (v) {
+                        setState(() => _fontSize = v);
+                        ref.read(fontSizeProvider.notifier).state = v;
+                      },
+                    ),
+                  ),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.brightness_medium_rounded),
+                  title: const Text("Brightness"),
+                  subtitle: Text("${(_brightness * 100).toInt()}%"),
+                  trailing: SizedBox(
+                    width: 160,
+                    child: Slider(
+                      value: _brightness,
+                      min: 0.1,
+                      max: 1.0,
+                      divisions: 9,
+                      label: "${(_brightness * 100).toInt()}%",
+                      onChanged: (v) {
+                        setState(() => _brightness = v);
+                        ref.read(brightnessProvider.notifier).state = v;
+                      },
+                    ),
+                  ),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.space_bar_rounded),
+                  title: const Text("Margins"),
+                  subtitle: Text("${_margin.toInt()}px"),
+                  trailing: SizedBox(
+                    width: 160,
+                    child: Slider(
+                      value: _margin,
+                      min: 8,
+                      max: 32,
+                      divisions: 6,
+                      label: "${_margin.toInt()}px",
+                      onChanged: (v) {
+                        setState(() => _margin = v);
+                        ref.read(marginProvider.notifier).state = v;
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.brightness_medium_rounded),
-            title: const Text("Brightness"),
-            subtitle: Text("${(_brightness * 100).toInt()}%"),
-            trailing: SizedBox(
-              width: 160,
-              child: Slider(
-                value: _brightness,
-                min: 0.1,
-                max: 1.0,
-                divisions: 9,
-                label: "${(_brightness * 100).toInt()}%",
-                onChanged: (v) => setState(() => _brightness = v),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.space_bar_rounded),
-            title: const Text("Margins"),
-            subtitle: Text("${_margin.toInt()}px"),
-            trailing: SizedBox(
-              width: 160,
-              child: Slider(
-                value: _margin,
-                min: 8,
-                max: 32,
-                divisions: 6,
-                label: "${_margin.toInt()}px",
-                onChanged: (v) => setState(() => _margin = v),
-              ),
-            ),
-          ),
-          const Divider(),
+          const SizedBox(height: 8),
           _SectionHeader(title: "Privacy"),
-          SwitchListTile(
-            title: const Text("Public Profile"),
-            subtitle: const Text("Allow others to see your reading activity"),
-            secondary: const Icon(Icons.public_rounded),
-            value: true,
-            onChanged: (v) {},
-          ),
-          SwitchListTile(
-            title: const Text("Sync Metadata"),
-            subtitle: const Text("Sync reading progress and bookmarks"),
-            secondary: const Icon(Icons.sync_rounded),
-            value: true,
-            onChanged: (v) {},
-          ),
-          SwitchListTile(
-            title: const Text("Analytics"),
-            subtitle: const Text("Help improve Libora with usage data"),
-            secondary: const Icon(Icons.analytics_rounded),
-            value: false,
-            onChanged: (v) {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.download_rounded),
-            title: const Text("Export Data"),
-            subtitle: const Text("Export your reading data"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
-          ),
-          const Divider(),
-          _SectionHeader(title: "Account"),
-          ListTile(
-            leading: const Icon(Icons.person_rounded),
-            title: const Text("Profile"),
-            subtitle: const Text("Edit your profile information"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppConstants.routeProfile),
-          ),
-          ListTile(
-            leading: const Icon(Icons.login_rounded),
-            title: const Text("Sign In / Sign Up"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppConstants.routeAuth),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: Colors.red),
-            title: Text("Logout", style: TextStyle(color: colorScheme.error)),
-            onTap: () async {
-              await ref.read(authServiceProvider).signOut();
-              if (context.mounted) context.go(AppConstants.routeHome);
-            },
-          ),
-          const Divider(),
-          _SectionHeader(title: "Storage"),
-          ListTile(
-            leading: const Icon(Icons.cleaning_services_rounded),
-            title: const Text("Clear Cache"),
-            subtitle: const Text("Free up storage space"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
-          ),
-          const Divider(),
-          _SectionHeader(title: "About"),
-          appInfo.when(
-            data: (info) => ListTile(
-              leading: const Icon(Icons.info_rounded),
-              title: const Text("Version"),
-              subtitle: Text("${info.version} (${info.buildNumber})"),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
             ),
-            loading: () => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: const Text("...")),
-            error: (_, __) => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: Text(AppConstants.appVersion)),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text("Public Profile"),
+                  subtitle: const Text("Allow others to see your reading activity"),
+                  secondary: const Icon(Icons.public_rounded),
+                  value: true,
+                  onChanged: (v) {},
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                SwitchListTile(
+                  title: const Text("Sync Metadata"),
+                  subtitle: const Text("Sync reading progress and bookmarks"),
+                  secondary: const Icon(Icons.sync_rounded),
+                  value: true,
+                  onChanged: (v) {},
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                SwitchListTile(
+                  title: const Text("Analytics"),
+                  subtitle: const Text("Help improve Libora with usage data"),
+                  secondary: const Icon(Icons.analytics_rounded),
+                  value: false,
+                  onChanged: (v) {},
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.description_rounded),
-            title: const Text("Open Source Licenses"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => showLicensePage(context: context),
+          const SizedBox(height: 8),
+          _SectionHeader(title: "Account"),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.person_rounded),
+                  title: const Text("Profile"),
+                  subtitle: const Text("Edit your profile information"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push(AppConstants.routeProfile),
+                ),
+                if (!isAuthenticated) ...[
+                  Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                  ListTile(
+                    leading: const Icon(Icons.login_rounded),
+                    title: const Text("Sign In / Sign Up"),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.push(AppConstants.routeAuth),
+                  ),
+                ],
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                  title: Text("Logout", style: TextStyle(color: colorScheme.error)),
+                  onTap: () async {
+                    await ref.read(authServiceProvider).signOut();
+                    if (context.mounted) context.go(AppConstants.routeHome);
+                  },
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_rounded),
-            title: const Text("Privacy Policy"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _launchUrl("https://libora.app/privacy"),
+          const SizedBox(height: 8),
+          _SectionHeader(title: "Storage"),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_rounded),
+                  title: const Text("Clear Cache"),
+                  subtitle: const Text("Free up storage space"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {},
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.download_rounded),
+                  title: const Text("Export Data"),
+                  subtitle: const Text("Export your reading data"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {},
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.article_rounded),
-            title: const Text("Terms of Service"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _launchUrl("https://libora.app/terms"),
+          const SizedBox(height: 8),
+          _SectionHeader(title: "About"),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                appInfo.when(
+                  data: (info) => ListTile(
+                    leading: const Icon(Icons.info_rounded),
+                    title: const Text("Version"),
+                    subtitle: Text("${info.version} (${info.buildNumber})"),
+                  ),
+                  loading: () => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: const Text("...")),
+                  error: (_, __) => ListTile(leading: const Icon(Icons.info_rounded), title: const Text("Version"), subtitle: Text(AppConstants.appVersion)),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.description_rounded),
+                  title: const Text("Open Source Licenses"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => showLicensePage(context: context),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_rounded),
+                  title: const Text("Privacy Policy"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _launchUrl("https://libora.app/privacy"),
+                ),
+                Divider(height: 1, indent: 72, color: theme.colorScheme.outline.withOpacity(0.3)),
+                ListTile(
+                  leading: const Icon(Icons.article_rounded),
+                  title: const Text("Terms of Service"),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _launchUrl("https://libora.app/terms"),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 32),
         ],
@@ -241,7 +330,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   String _accentColorName(Color color) {
-    if (color == AppTheme.primaryLight) return "Blue";
+    if (color == const Color(0xFF1A73E8)) return "Blue";
     if (color == const Color(0xFF34A853)) return "Green";
     if (color == const Color(0xFFEA4335)) return "Red";
     if (color == const Color(0xFFFBBC04)) return "Yellow";
@@ -253,7 +342,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _showAccentColorPicker(SettingsService settings) {
     final colors = [
-      AppTheme.primaryLight,
+      const Color(0xFF1A73E8),
       const Color(0xFF34A853),
       const Color(0xFFEA4335),
       const Color(0xFFFBBC04),
@@ -302,7 +391,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
-
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -311,13 +399,12 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(
         title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
+        style: TextStyle(
+          color: AppColors.accent,
           fontWeight: FontWeight.bold,
           letterSpacing: 1,
         ),
