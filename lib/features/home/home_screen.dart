@@ -70,43 +70,7 @@ Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
   }
 }
 
-Future<void> _scanDevice(BuildContext context, WidgetRef ref) async {
-  final repo = ref.read(bookRepositoryProvider);
-  final service = ImportService(repo);
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
-  try {
-    final found = await service.scanDevice();
-    if (context.mounted) Navigator.of(context).pop();
-    await _refreshDashboard(ref);
-    if (context.mounted) {
-      if (found.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Found and imported ${found.length} book${found.length == 1 ? "" : "s"}"),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No new books found on device")),
-        );
-      }
-    }
-  } catch (e) {
-    if (context.mounted) Navigator.of(context).pop();
-    await _refreshDashboard(ref);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Scan error: $e")),
-      );
-    }
-  }
-}
-
-class HomeScreen extends ConsumerWidget {
+  class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
@@ -166,11 +130,6 @@ class HomeScreen extends ConsumerWidget {
                     icon: Icons.upload_file_rounded,
                     label: "Import Book",
                     onTap: () => _importBooks(context, ref),
-                  ),
-                  QuickActionButton(
-                    icon: Icons.phone_android_rounded,
-                    label: "Scan Device",
-                    onTap: () => _scanDevice(context, ref),
                   ),
                   QuickActionButton(
                     icon: Icons.explore_rounded,
@@ -400,28 +359,17 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Import books from your device or browse online\nto build your library",
+              "Import books from your device\nto build your library",
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: () => _importBooks(context, ref),
-                  icon: const Icon(Icons.upload_file_rounded, size: 18),
-                  label: const Text("Import"),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _scanDevice(context, ref),
-                  icon: const Icon(Icons.search_rounded, size: 18),
-                  label: const Text("Scan"),
-                ),
-              ],
+            FilledButton.tonalIcon(
+              onPressed: () => _importBooks(context, ref),
+              icon: const Icon(Icons.upload_file_rounded, size: 18),
+              label: const Text("Import"),
             ),
           ],
         ),

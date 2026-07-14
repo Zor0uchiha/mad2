@@ -1,26 +1,14 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
-import "package:cached_network_image/cached_network_image.dart";
 import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/user_model.dart";
 import "../../data/models/book_model.dart";
-import "../../data/models/review_model.dart";
-import "../../data/services/auth_service.dart";
-import "../../data/repositories/local_repositories.dart";
 
-final _userProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
-  return ref.read(authServiceProvider).currentUser;
-});
-
-final _profileBooksProvider = Provider.autoDispose<int>((ref) {
-  return ref.watch(totalBooksProvider).asData?.value ?? 0;
-});
-
-final _profileReviewsProvider = Provider.autoDispose<int>((ref) {
-  return 0;
+final _profileUserProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
+  return ref.watch(localUserProvider).valueOrNull;
 });
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -45,13 +33,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     super.dispose();
   }
 
+  Future<void> _togglePrivacy(UserModel user) async {
+    final repo = ref.read(userRepositoryProvider);
+    await repo.updateProfile(isPublicProfile: !user.isPublicProfile);
+    ref.invalidate(localUserProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final userAsync = ref.watch(_userProvider);
-    final totalBooks = ref.watch(_profileBooksProvider);
-    final totalReviews = ref.watch(_profileReviewsProvider);
+    final userAsync = ref.watch(_profileUserProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -94,11 +86,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                 SliverToBoxAdapter(
                   child: _ProfileHeader(
                     user: user,
-                    booksRead: totalBooks,
+                    booksRead: books.length,
                     currentlyReading: currentlyReading,
                     finishedBooks: finishedBooks,
-                    reviewsCount: totalReviews,
                     streak: user.readingStreak,
+                    onTogglePrivacy: () => _togglePrivacy(user),
                   ),
                 ),
                 SliverPersistentHeader(
@@ -108,7 +100,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                       controller: _tabController,
                       tabs: const [
                         Tab(text: "Books"),
-                        Tab(text: "Reviews"),
+                        Tab(text: "Achievements"),
                         Tab(text: "Collections"),
                         Tab(text: "Lists"),
                       ],
@@ -122,7 +114,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
               controller: _tabController,
               children: [
                 _BooksTab(books: books),
-                _ReviewsTab(),
+                _AchievementsTab(books: books, streak: user.readingStreak),
                 _CollectionsTab(),
                 _ListsTab(),
               ],
@@ -141,16 +133,16 @@ class _ProfileHeader extends StatelessWidget {
   final int booksRead;
   final int currentlyReading;
   final int finishedBooks;
-  final int reviewsCount;
   final int streak;
+  final VoidCallback onTogglePrivacy;
 
   const _ProfileHeader({
     required this.user,
     required this.booksRead,
     required this.currentlyReading,
     required this.finishedBooks,
-    required this.reviewsCount,
     required this.streak,
+    required this.onTogglePrivacy,
   });
 
   @override
@@ -165,8 +157,7 @@ class _ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 48,
             backgroundColor: colorScheme.primaryContainer,
-            backgroundImage: user.photoUrl != null ? CachedNetworkImageProvider(user.photoUrl!) : null,
-            child: user.photoUrl == null ? Icon(Icons.person_rounded, size: 48, color: colorScheme.onPrimaryContainer) : null,
+            child: Icon(Icons.person_rounded, size: 48, color: colorScheme.onPrimaryContainer),
           ),
           const SizedBox(height: 12),
           Text(user.displayName ?? "Reader", style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -178,40 +169,13 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _StatColumn(value: booksRead.toString(), label: "Books Read"),
+              _StatColumn(value: booksRead.toString(), label: "Books"),
               _StatColumn(value: currentlyReading.toString(), label: "Reading"),
               _StatColumn(value: finishedBooks.toString(), label: "Finished"),
-              _StatColumn(value: reviewsCount.toString(), label: "Reviews"),
+              _StatColumn(value: "$streak", label: "Streak"),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Icon(Icons.local_fire_department_rounded, color: AppColors.streak, size: 28),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("$streak day${streak == 1 ? "" : "s"}", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                            Text("Reading Streak", style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant)),
-                          ],
-                        ),
-                        const Spacer(),
-                        Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -224,15 +188,15 @@ class _ProfileHeader extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // toggle privacy
-                  },
+                  onPressed: onTogglePrivacy,
                   icon: Icon(user.isPublicProfile ? Icons.public_rounded : Icons.lock_rounded),
                   label: Text(user.isPublicProfile ? "Public" : "Private"),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _ReadingCalendar(streak: streak),
         ],
       ),
     );
@@ -247,15 +211,94 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _EditProfileSheet extends StatefulWidget {
+class _ReadingCalendar extends StatelessWidget {
+  final int streak;
+
+  const _ReadingCalendar({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final days = List.generate(28, (i) => now.subtract(Duration(days: 27 - i)));
+    final today = now.weekday;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_month_rounded, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text("Reading Activity", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.streak.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.streak),
+                      const SizedBox(width: 4),
+                      Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.streak)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: days.map((day) {
+                final isActive = day.day % 3 == 0 && day.isBefore(now);
+                final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
+                return Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isToday
+                        ? theme.colorScheme.primary
+                        : isActive
+                            ? theme.colorScheme.primaryContainer
+                            : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "${day.day}",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                        color: isToday ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditProfileSheet extends ConsumerStatefulWidget {
   final UserModel user;
   const _EditProfileSheet({required this.user});
 
   @override
-  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+  ConsumerState<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
 
-class _EditProfileSheetState extends State<_EditProfileSheet> {
+class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
 
@@ -271,6 +314,16 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     _nameController.dispose();
     _bioController.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    final repo = ref.read(userRepositoryProvider);
+    await repo.updateProfile(
+      displayName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
+      bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+    );
+    ref.invalidate(localUserProvider);
+    if (context.mounted) Navigator.pop(context);
   }
 
   @override
@@ -295,7 +348,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: _save,
             child: const Text("Save"),
           ),
         ],
@@ -357,7 +410,7 @@ class _BooksTab extends StatelessWidget {
           ),
           title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text("${book.author} \u2022 ${(book.progress * 100).toInt()}%"),
-          trailing: Icon(Icons.chevron_right_rounded),
+          trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
         );
       },
@@ -365,21 +418,111 @@ class _BooksTab extends StatelessWidget {
   }
 }
 
-class _ReviewsTab extends StatelessWidget {
+class _AchievementsTab extends StatelessWidget {
+  final List<BookModel> books;
+  final int streak;
+
+  const _AchievementsTab({required this.books, required this.streak});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.rate_review_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: 8),
-          Text("No reviews yet", style: theme.textTheme.bodyMedium),
-        ],
+    final finishedCount = books.where((b) => b.progress >= 1).length;
+    final totalPages = books.fold<int>(0, (sum, b) => sum + b.pageCount);
+
+    final achievements = [
+      _Achievement(
+        icon: Icons.menu_book_rounded,
+        label: "First Book",
+        description: "Read your first book",
+        unlocked: finishedCount >= 1,
       ),
+      _Achievement(
+        icon: Icons.library_books_rounded,
+        label: "Bookworm",
+        description: "Read 5 books",
+        unlocked: finishedCount >= 5,
+      ),
+      _Achievement(
+        icon: Icons.school_rounded,
+        label: "Scholar",
+        description: "Read 10 books",
+        unlocked: finishedCount >= 10,
+      ),
+      _Achievement(
+        icon: Icons.local_fire_department_rounded,
+        label: "On Fire",
+        description: "7-day reading streak",
+        unlocked: streak >= 7,
+      ),
+      _Achievement(
+        icon: Icons.whatshot_rounded,
+        label: "Unstoppable",
+        description: "30-day reading streak",
+        unlocked: streak >= 30,
+      ),
+      _Achievement(
+        icon: Icons.chrome_reader_mode_rounded,
+        label: "Page Turner",
+        description: "Read 1000 pages",
+        unlocked: totalPages >= 1000,
+      ),
+    ];
+
+    if (achievements.where((a) => a.unlocked).isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.emoji_events_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text("No achievements yet", style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            Text("Keep reading to unlock achievements!", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: achievements.map((a) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: a.unlocked ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
+              child: Icon(
+                a.icon,
+                color: a.unlocked ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            title: Text(a.label, style: TextStyle(fontWeight: a.unlocked ? FontWeight.w600 : FontWeight.normal)),
+            subtitle: Text(a.description, style: theme.textTheme.bodySmall),
+            trailing: Icon(
+              a.unlocked ? Icons.check_circle_rounded : Icons.lock_rounded,
+              color: a.unlocked ? Colors.green : theme.colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
+}
+
+class _Achievement {
+  final IconData icon;
+  final String label;
+  final String description;
+  final bool unlocked;
+
+  const _Achievement({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.unlocked,
+  });
 }
 
 class _CollectionsTab extends ConsumerWidget {
@@ -430,6 +573,12 @@ class _ListsTab extends ConsumerWidget {
             Icon(Icons.list_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: 8),
             Text("No reading lists", style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            FilledButton.icon(
+              onPressed: () => context.push(AppConstants.routeReadingLists),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text("Create List"),
+            ),
           ],
         ),
       );
@@ -444,7 +593,7 @@ class _ListsTab extends ConsumerWidget {
           title: Text(list.title),
           subtitle: Text("${list.bookCount} books"),
           trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () {},
+          onTap: () => context.push(AppConstants.routeReadingLists),
         );
       },
     );

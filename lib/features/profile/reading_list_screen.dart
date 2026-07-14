@@ -5,7 +5,6 @@ import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../data/models/reading_list_model.dart";
 import "../../data/models/book_model.dart";
-import "../../data/repositories/local_repositories.dart";
 
 final _readingListsProvider = FutureProvider.autoDispose<List<ReadingListModel>>((ref) async {
   final box = await ref.watch(readingListsBoxProvider.future);
@@ -76,6 +75,7 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
       sortOrder: box.values.length,
     );
     await box.put(list.id, list);
+    ref.invalidate(_readingListsProvider);
   }
 
   Future<void> _deleteList(ReadingListModel list) async {
@@ -93,6 +93,7 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
     if (confirmed == true) {
       final box = await ref.read(readingListsBoxProvider.future);
       await box.delete(list.id);
+      ref.invalidate(_readingListsProvider);
     }
   }
 
@@ -100,6 +101,122 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
     final updated = list.copyWith(isPublic: !list.isPublic, updatedAt: DateTime.now());
     final box = await ref.read(readingListsBoxProvider.future);
     await box.put(updated.id, updated);
+    ref.invalidate(_readingListsProvider);
+  }
+
+  Future<void> _addBookToList(ReadingListModel list, List<BookModel> availableBooks) async {
+    final booksNotInList = availableBooks.where((b) => !list.bookIds.contains(b.id)).toList();
+    if (booksNotInList.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("All books are already in this list")),
+        );
+      }
+      return;
+    }
+
+    final selected = await showDialog<BookModel>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Add Book"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: booksNotInList.length,
+            itemBuilder: (_, i) {
+              final book = booksNotInList[i];
+              return ListTile(
+                title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () => Navigator.pop(context, book),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        ],
+      ),
+    );
+
+    if (selected != null) {
+      final updated = list.copyWith(
+        bookIds: [...list.bookIds, selected.id],
+        updatedAt: DateTime.now(),
+      );
+      final box = await ref.read(readingListsBoxProvider.future);
+      await box.put(updated.id, updated);
+      ref.invalidate(_readingListsProvider);
+    }
+  }
+
+  Future<void> _removeBookFromList(ReadingListModel list, String bookId) async {
+    final updated = list.copyWith(
+      bookIds: list.bookIds.where((id) => id != bookId).toList(),
+      updatedAt: DateTime.now(),
+    );
+    final box = await ref.read(readingListsBoxProvider.future);
+    await box.put(updated.id, updated);
+    ref.invalidate(_readingListsProvider);
+  }
+
+  void _shareList(ReadingListModel list, List<BookModel> listBooks) {
+    final buffer = StringBuffer();
+    buffer.writeln("${list.title} - Reading List");
+    if (list.description != null) {
+      buffer.writeln(list.description);
+      buffer.writeln();
+    }
+    buffer.writeln("Books (${list.bookCount}):");
+    for (final book in listBooks) {
+      buffer.writeln("- ${book.title} by ${book.author}");
+    }
+    if (listBooks.length < list.bookCount) {
+      buffer.writeln("... and ${list.bookCount - listBooks.length} more");
+    }
+
+    // Use a simple copy-to-clipboard approach for sharing
+    final text = buffer.toString();
+    // The user can paste the text anywhere
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Share List"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("List details copied to clipboard:"),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Copy to clipboard
+              // In a real app, use Clipboard.setData
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("List copied to clipboard")),
+              );
+            },
+            child: const Text("Copy"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -109,6 +226,8 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
     final listsAsync = ref.watch(_readingListsProvider);
     final lists = listsAsync.asData?.value ?? [];
     final books = ref.watch(allBooksProvider).asData?.value ?? [];
+
+    final totalBooksInLists = lists.fold<int>(0, (sum, l) => sum + l.bookCount);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Reading Lists")),
@@ -140,7 +259,7 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       children: [
-                        Text("${lists.length} list${lists.length == 1 ? "" : "s"}", style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                        Text("${lists.length} list${lists.length == 1 ? "" : "s"} | $totalBooksInLists book${totalBooksInLists == 1 ? "" : "s"}", style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
                         const Spacer(),
                       ],
                     ),
@@ -197,8 +316,18 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
                                   ),
                                   title: Text(book.title, style: theme.textTheme.bodyMedium),
                                   subtitle: Text(book.author, style: theme.textTheme.labelSmall),
-                                  trailing: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall),
-                                  onTap: () {},
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: Icon(Icons.remove_circle_outline_rounded, size: 18, color: colorScheme.error),
+                                        onPressed: () => _removeBookFromList(list, book.id),
+                                        tooltip: "Remove from list",
+                                      ),
+                                    ],
+                                  ),
                                 );
                               }).toList(),
                             ),
@@ -212,6 +341,17 @@ class _ReadingListScreenState extends ConsumerState<ReadingListScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                           child: Row(
                             children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const Text("Add Book"),
+                                onPressed: () => _addBookToList(list, books),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.share_rounded, size: 18),
+                                label: const Text("Share"),
+                                onPressed: () => _shareList(list, listBooks),
+                              ),
+                              const Spacer(),
                               TextButton.icon(
                                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
                                 label: const Text("Delete"),

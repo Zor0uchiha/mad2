@@ -581,10 +581,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       filePath: _book.filePath!,
       enableSwipe: true,
       swipeHorizontal: !_continuousScroll,
-      autoSpacing: _continuousScroll,
+      autoSpacing: true,
       pageFling: true,
       defaultPage: _currentPage,
       fitEachPage: true,
+      fitPolicy: FitPolicy.BOTH,
       onRender: (pages) {
         if (mounted && pages != null && pages > 0) {
           setState(() => _totalPages = pages);
