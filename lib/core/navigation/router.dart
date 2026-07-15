@@ -81,12 +81,15 @@ final GoRouter router = GoRouter(
       path: "${AppConstants.routeBookDetail}/:bookId",
       builder: (context, state) {
         final bookId = state.pathParameters['bookId'] ?? '';
-        return BookDetailScreen(bookId: bookId);
+        final source = state.uri.queryParameters['source'] ?? '';
+        return BookDetailScreen(bookId: bookId, source: source);
       },
     ),
     GoRoute(
       path: AppConstants.routeSearch,
-      builder: (context, state) => const SearchScreen(),
+      builder: (context, state) => SearchScreen(
+        initialQuery: state.uri.queryParameters['q'] ?? '',
+      ),
     ),
     GoRoute(
       path: AppConstants.routeStatistics,

@@ -30,6 +30,10 @@ class ImportService {
     return imported;
   }
 
+  Future<BookModel?> importFromPath(String filePath) async {
+    return _importFile(filePath);
+  }
+
   Future<BookModel?> _importFile(String filePath) async {
     try {
       final file = File(filePath);

@@ -73,6 +73,14 @@ class StorageService {
     return await Hive.openBox(AppConstants.hiveBoxSettings);
   }
 
+  static Future<Box<dynamic>> openOnlineCacheBox() async {
+    return await Hive.openBox(AppConstants.hiveBoxOnlineCache);
+  }
+
+  static Future<Box<dynamic>> openBrowseCacheBox() async {
+    return await Hive.openBox(AppConstants.hiveBoxBrowseCache);
+  }
+
   static Future<void> clearAll() async {
     const boxNames = [
       AppConstants.hiveBoxBooks,
@@ -86,6 +94,8 @@ class StorageService {
       AppConstants.hiveBoxUserProfile,
       AppConstants.hiveBoxSettings,
       AppConstants.hiveBoxSyncQueue,
+      AppConstants.hiveBoxOnlineCache,
+      AppConstants.hiveBoxBrowseCache,
     ];
     for (final name in boxNames) {
       if (Hive.isBoxOpen(name)) {

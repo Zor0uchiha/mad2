@@ -2,6 +2,9 @@ class AppConstants {
   static const String appName = "Libora";
   static const String appVersion = "1.3.41";
   static const String googleBooksApiBaseUrl = "https://www.googleapis.com/books/v1/volumes";
+  static const String openLibraryApiUrl = "https://openlibrary.org";
+  static const String gutendexApiUrl = "https://gutendex.com/books";
+  static const String internetArchiveApiUrl = "https://archive.org/advancedsearch.php";
 
   static const int splashDelayMs = 2000;
   static const int onboardingPageCount = 5;
@@ -23,6 +26,8 @@ class AppConstants {
   static const String hiveBoxReadingProgress = "reading_progress";
   static const String hiveBoxReadingGoals = "reading_goals";
   static const String hiveBoxSyncQueue = "sync_queue";
+  static const String hiveBoxOnlineCache = "online_cache";
+  static const String hiveBoxBrowseCache = "browse_cache";
 
   static const String routeSplash = "/splash";
   static const String routeOnboarding = "/onboarding";
