@@ -117,14 +117,14 @@ class ActivityScreen extends ConsumerWidget {
               _buildReadingGoal(context, readingGoal, colorScheme),
               const SizedBox(height: 20),
             ],
-            _sectionHeader("Activity Timeline"),
+            _sectionHeader(context, "Activity Timeline"),
             const SizedBox(height: 12),
             if (activityItems.isEmpty)
               _buildEmptyActivity(theme, colorScheme)
             else
               ...activityItems.take(20).map((item) => _TimelineItem(item: item, theme: theme)),
             const SizedBox(height: 20),
-            _sectionHeader("Reading Heatmap"),
+            _sectionHeader(context, "Reading Heatmap"),
             const SizedBox(height: 12),
             _buildHeatmap(context, streak, readingDates, colorScheme),
           ],
@@ -141,7 +141,7 @@ class ActivityScreen extends ConsumerWidget {
     ]);
   }
 
-  Widget _sectionHeader(String title) {
+  Widget _sectionHeader(BuildContext context, String title) {
     return Row(
       children: [
         Text(

@@ -8,6 +8,7 @@ import "package:flutter_pdfview/flutter_pdfview.dart";
 import "package:epub_view/epub_view.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/providers.dart";
+import "../../core/theme/app_colors.dart";
 import "../../data/models/book_model.dart";
 import "../../data/models/bookmark_model.dart";
 import "../../data/models/note_model.dart";

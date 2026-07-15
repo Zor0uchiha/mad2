@@ -541,9 +541,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final colorScheme = theme.colorScheme;
     final books = _filteredBooks;
     final continueBooks = books.where((b) => b.progress > 0 && b.progress < 1).toList();
-    final recentlyAdded = _selectedFilter == _BookFilter.all ? books.where((b) => DateTime.now().difference(b.createdAt).inDays < 14).toList() : [];
-    final favorites = _selectedFilter == _BookFilter.all ? books.where((b) => b.isFavorite).toList() : [];
-    final finished = _selectedFilter == _BookFilter.all ? books.where((b) => b.progress >= 1).toList() : [];
+    final recentlyAdded = _selectedFilter == _BookFilter.all ? books.where((b) => DateTime.now().difference(b.createdAt).inDays < 14).toList() : <BookModel>[];
+    final favorites = _selectedFilter == _BookFilter.all ? books.where((b) => b.isFavorite).toList() : <BookModel>[];
+    final finished = _selectedFilter == _BookFilter.all ? books.where((b) => b.progress >= 1).toList() : <BookModel>[];
 
     final hasSections = _selectedFilter == _BookFilter.all && _searchController.text.isEmpty;
 
