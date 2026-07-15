@@ -7,13 +7,11 @@ import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/book_model.dart";
-import "../../data/models/collection_model.dart";
 import "../../data/models/reading_goal_model.dart";
 import "../../data/services/storage_service.dart";
 import "../../data/services/import_service.dart";
 import "../../data/repositories/local_repositories.dart";
 import "widgets/continue_reading_card.dart";
-import "widgets/stat_card.dart";
 
 final readingGoalProvider = FutureProvider<ReadingGoalModel?>((ref) async {
   final box = await StorageService.openReadingGoalsBox();
@@ -29,6 +27,41 @@ final streakProvider = FutureProvider<int>((ref) async {
   return user?.readingStreak ?? 0;
 });
 
+final recommendedBooksProvider = FutureProvider<List<BookModel>>((ref) async {
+  final repo = ref.read(bookRepositoryProvider);
+  final books = await repo.getAllBooks();
+  if (books.isEmpty) return [];
+  final favorites = books.where((b) => b.isFavorite).toList();
+  if (favorites.length >= 3) return favorites.take(6).toList();
+  books.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  return books.take(6).toList();
+});
+
+const _dailyQuotes = [
+  "The man who does not read has no advantage over the man who cannot read.",
+  "A reader lives a thousand lives before he dies.",
+  "Books are a uniquely portable magic.",
+  "So many books, so little time.",
+  "The more that you read, the more things you will know.",
+  "Reading is to the mind what exercise is to the body.",
+  "A room without books is like a body without a soul.",
+  "Today a reader, tomorrow a leader.",
+  "Reading gives us someplace to go when we have to stay where we are.",
+];
+
+String _dailyQuote() {
+  final now = DateTime.now();
+  final index = (now.month * 31 + now.day) % _dailyQuotes.length;
+  return _dailyQuotes[index];
+}
+
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
 Future<void> _refreshDashboard(WidgetRef ref) async {
   await Future.wait([
     ref.refresh(allBooksProvider.future),
@@ -37,6 +70,7 @@ Future<void> _refreshDashboard(WidgetRef ref) async {
     ref.refresh(recentlyAddedBooksProvider.future),
     ref.refresh(totalBooksProvider.future),
     ref.refresh(totalPagesReadProvider.future),
+    ref.refresh(recommendedBooksProvider.future),
   ]);
 }
 
@@ -52,6 +86,7 @@ Future<void> _importBooks(BuildContext context, WidgetRef ref) async {
       ref.invalidate(recentlyAddedBooksProvider);
       ref.invalidate(totalBooksProvider);
       ref.invalidate(totalPagesReadProvider);
+      ref.invalidate(recommendedBooksProvider);
       if (imported.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Imported ${imported.length} book${imported.length == 1 ? "" : "s"}")),
@@ -71,24 +106,32 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+
     final allBooks = ref.watch(allBooksProvider).asData?.value ?? [];
     final continueReadingBooks = ref.watch(continueReadingProvider).asData?.value ?? [];
-    final recentBooks = ref.watch(recentBooksProvider).asData?.value ?? [];
     final recentlyAdded = ref.watch(recentlyAddedBooksProvider).asData?.value ?? [];
-    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
-    final totalBooks = ref.watch(totalBooksProvider).asData?.value ?? 0;
-    final totalPagesRead = ref.watch(totalPagesReadProvider).asData?.value ?? 0;
+    final recommendedBooks = ref.watch(recommendedBooksProvider).asData?.value ?? [];
     final readingGoal = ref.watch(readingGoalProvider);
     final streak = ref.watch(streakProvider).asData?.value ?? 0;
-    final inProgressCount = allBooks.where((b) => b.progress > 0 && b.progress < 1).length;
+    final user = ref.watch(localUserProvider).asData?.value;
+    final userName = user?.displayName ?? "Reader";
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppConstants.appName, style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          AppConstants.appName,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () => context.push(AppConstants.routeSearch),
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => context.push(AppConstants.routeSettings),
           ),
           IconButton(
             icon: const Icon(Icons.settings_rounded),
@@ -100,20 +143,43 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () => _refreshDashboard(ref),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _GreetingCard(streak: streak),
+              _GreetingHeroCard(
+                greeting: _greeting(),
+                userName: userName,
+                streak: streak,
+                readingGoal: readingGoal.asData?.value,
+                quote: _dailyQuote(),
+              ),
               const SizedBox(height: 24),
-              _SectionHeader(icon: Icons.flash_on_rounded, title: "Quick Actions"),
-              const SizedBox(height: 12),
+              if (continueReadingBooks.isNotEmpty) ...[
+                _SectionHeader(title: "Continue Reading"),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 290,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: continueReadingBooks.length,
+                    padding: EdgeInsets.zero,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: ContinueReadingCard(book: continueReadingBooks[index]),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+              _SectionHeader(title: "Quick Actions"),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: _QuickActionCard(
                       icon: Icons.upload_file_rounded,
-                      label: "Import Book",
+                      label: "Import",
                       color: AppColors.accent,
                       onTap: () => _importBooks(context, ref),
                     ),
@@ -122,7 +188,7 @@ class HomeScreen extends ConsumerWidget {
                   Expanded(
                     child: _QuickActionCard(
                       icon: Icons.explore_rounded,
-                      label: "Browse Books",
+                      label: "Browse",
                       color: const Color(0xFF7C4DFF),
                       onTap: () => context.push(AppConstants.routeBrowse),
                     ),
@@ -136,119 +202,61 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () => context.push(AppConstants.routeCollections),
                     ),
                   ),
-                ],
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Card(
-                      color: AppColors.cardDark,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _SectionHeader(icon: Icons.timelapse_rounded, title: "Continue"),
-                            const SizedBox(height: 8),
-                            if (continueReadingBooks.isNotEmpty)
-                              ...continueReadingBooks.take(3).map((book) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: ContinueReadingCard(book: book),
-                              ))
-                            else
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text("No books in progress", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Card(
-                      color: AppColors.cardDark,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _SectionHeader(icon: Icons.history_rounded, title: "Recent"),
-                            const SizedBox(height: 8),
-                            if (recentBooks.isNotEmpty)
-                              ...recentBooks.take(3).map((book) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _RecentBookRow(book: book),
-                              ))
-                            else
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text("No recent books", style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                              ),
-                          ],
-                        ),
-                      ),
+                    child: _QuickActionCard(
+                      icon: Icons.list_alt_rounded,
+                      label: "Lists",
+                      color: const Color(0xFF1A73E8),
+                      onTap: () => context.push(AppConstants.routeReadingLists),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _SectionHeader(icon: Icons.bar_chart_rounded, title: "Reading Stats"),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: StatCard(title: "Total Books", value: "$totalBooks", icon: Icons.menu_book_rounded)),
-                  const SizedBox(width: 12),
-                  Expanded(child: StatCard(title: "Reading", value: "$inProgressCount", icon: Icons.trending_up_rounded, iconColor: AppColors.accent)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              StatCard(title: "Pages Read", value: "$totalPagesRead", icon: Icons.chrome_reader_mode_rounded, iconColor: AppColors.streak),
-              if (readingGoal.asData?.value case final goal? when goal.targetBooks > 0) ...[
-                const SizedBox(height: 28),
-                _SectionHeader(icon: Icons.flag_rounded, title: "Reading Goal"),
-                const SizedBox(height: 12),
-                _ReadingGoalCard(goal: goal),
-              ],
               if (recentlyAdded.isNotEmpty) ...[
                 const SizedBox(height: 28),
-                _SectionHeader(icon: Icons.add_circle_outline_rounded, title: "Recently Added"),
-                const SizedBox(height: 12),
+                _SectionHeader(
+                  title: "Recently Added",
+                  showSeeAll: true,
+                  onSeeAll: () => context.push(AppConstants.routeLibrary),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   height: 180,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: recentlyAdded.length,
+                    padding: EdgeInsets.zero,
                     itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _SmallBookCard(book: recentlyAdded[index]),
+                      padding: const EdgeInsets.only(right: 16),
+                      child: _SmallBookCoverCard(book: recentlyAdded[index]),
                     ),
                   ),
                 ),
               ],
-              if (collections.isNotEmpty) ...[
+              if (recommendedBooks.isNotEmpty) ...[
                 const SizedBox(height: 28),
-                _SectionHeader(icon: Icons.collections_bookmark_rounded, title: "Collections"),
-                const SizedBox(height: 12),
+                _SectionHeader(title: "Recommended For You"),
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 48,
+                  height: 340,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: collections.length,
+                    itemCount: recommendedBooks.length,
+                    padding: EdgeInsets.zero,
                     itemBuilder: (context, index) {
-                      final col = collections[index];
+                      final book = recommendedBooks[index];
                       return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ActionChip(
-                          avatar: Icon(Icons.folder_rounded, size: 16, color: Color(col.colorValue)),
-                          label: Text(col.name),
-                          onPressed: () => context.push("${AppConstants.routeCollectionDetail}/${col.id}"),
+                        padding: const EdgeInsets.only(right: 16),
+                        child: _RecommendationCard(
+                          book: book,
+                          onSave: () async {
+                            final repo = ref.read(bookRepositoryProvider);
+                            final updated = book.copyWith(isFavorite: !book.isFavorite);
+                            await repo.updateBook(updated);
+                            ref.invalidate(allBooksProvider);
+                            ref.invalidate(recommendedBooksProvider);
+                          },
                         ),
                       );
                     },
@@ -256,8 +264,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
               if (allBooks.isEmpty) ...[
-                const SizedBox(height: 24),
-                _buildEmptyLibrary(context, theme, ref),
+                const SizedBox(height: 16),
+                _buildEmptyLibrary(context, theme, cardColor, ref),
               ],
               const SizedBox(height: 32),
             ],
@@ -267,74 +275,185 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyLibrary(BuildContext context, ThemeData theme, WidgetRef ref) {
-    return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-        child: Column(
-          children: [
-            Icon(Icons.menu_book_rounded, size: 64, color: AppColors.accent.withOpacity(0.4)),
-            const SizedBox(height: 16),
-            Text("Start Your Reading Journey", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text("Import books from your device\nto build your library", textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => _importBooks(context, ref),
-              icon: const Icon(Icons.upload_file_rounded, size: 18),
-              label: const Text("Import"),
-            ),
-          ],
-        ),
+  Widget _buildEmptyLibrary(
+    BuildContext context,
+    ThemeData theme,
+    Color cardColor,
+    WidgetRef ref,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.menu_book_rounded, size: 64, color: AppColors.accent.withOpacity(0.4)),
+          const SizedBox(height: 16),
+          Text(
+            "Start Your Reading Journey",
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Import books from your device\nto build your library",
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () => _importBooks(context, ref),
+            icon: const Icon(Icons.upload_file_rounded, size: 18),
+            label: const Text("Import"),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GreetingCard extends StatelessWidget {
+class _GreetingHeroCard extends StatelessWidget {
+  final String greeting;
+  final String userName;
   final int streak;
-  const _GreetingCard({required this.streak});
+  final ReadingGoalModel? readingGoal;
+  final String quote;
+
+  const _GreetingHeroCard({
+    required this.greeting,
+    required this.userName,
+    required this.streak,
+    this.readingGoal,
+    required this.quote,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
-    return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(greeting, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text("Reader!", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppColors.accent)),
-                ],
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "$greeting, $userName \u{1F44B}",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (streak > 0) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.streak.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_fire_department_rounded, color: AppColors.streak, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              "$streak Day Streak",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.streak,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
+            ],
+          ),
+          if (readingGoal != null && readingGoal!.targetBooks > 0) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Text(
+                  "Reading Goal",
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  "${readingGoal!.currentBooks} / ${readingGoal!.targetBooks} books",
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.streak.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.local_fire_department_rounded, color: AppColors.streak, size: 20),
-                  const SizedBox(width: 6),
-                  Text("$streak", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.streak, fontSize: 18)),
-                ],
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: readingGoal!.overallProgress.clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor: AppColors.border,
+                color: AppColors.accent,
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.accent.withOpacity(0.15)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.format_quote, color: AppColors.accent.withOpacity(0.5), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    quote,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -346,31 +465,57 @@ class _QuickActionCard extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionCard({required this.icon, required this.label, required this.color, required this.onTap});
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
         decoration: BoxDecoration(
-          color: AppColors.cardDark,
+          color: cardColor,
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 10),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -379,24 +524,35 @@ class _QuickActionCard extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  final IconData icon;
   final String title;
-  final VoidCallback? onTap;
+  final bool showSeeAll;
+  final VoidCallback? onSeeAll;
 
-  const _SectionHeader({required this.icon, required this.title, this.onTap});
+  const _SectionHeader({
+    required this.title,
+    this.showSeeAll = false,
+    this.onSeeAll,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.accent),
-        const SizedBox(width: 8),
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const Spacer(),
-        if (onTap != null)
+        if (showSeeAll && onSeeAll != null)
           TextButton(
-            onPressed: onTap,
-            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            onPressed: onSeeAll,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: const Text("See All"),
           ),
       ],
@@ -404,138 +560,247 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SmallBookCard extends StatelessWidget {
+class _SmallBookCoverCard extends StatelessWidget {
   final BookModel book;
-  const _SmallBookCard({required this.book});
+
+  const _SmallBookCoverCard({required this.book});
+
+  bool get _isNew {
+    return DateTime.now().difference(book.createdAt).inDays < 7;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              width: 110,
+              height: 180,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: hasCover
+                    ? Image.file(
+                        File(book.coverPath!),
+                        width: 110,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder(),
+                      )
+                    : _placeholder(),
+              ),
+            ),
+          ),
+          if (_isNew)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withOpacity(0.4),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  "NEW",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 110,
+      height: 180,
+      decoration: BoxDecoration(
+        color: AppColors.accent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Icon(Icons.menu_book_rounded, size: 32, color: AppColors.accent.withOpacity(0.4)),
+      ),
+    );
+  }
+}
+
+class _RecommendationCard extends StatelessWidget {
+  final BookModel book;
+  final VoidCallback onSave;
+
+  const _RecommendationCard({
+    required this.book,
+    required this.onSave,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
     final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    final genre = book.tags.isNotEmpty ? book.tags.first : "General";
+
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
-      child: Card(
-        color: AppColors.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        margin: EdgeInsets.zero,
-        child: Container(
-          width: 130,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
+      child: Container(
+        width: 220,
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: hasCover
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 36, color: AppColors.accent)),
+                      ? Image.file(
+                          File(book.coverPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _coverPlaceholder(),
                         )
-                      : Center(child: Icon(Icons.menu_book_rounded, size: 36, color: AppColors.accent)),
+                      : _coverPlaceholder(),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentBookRow extends StatelessWidget {
-  final BookModel book;
-  const _RecentBookRow({required this.book});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
-    return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: Container(
-          width: 44,
-          height: 60,
-          decoration: BoxDecoration(color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-          child: hasCover
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent)),
-                )
-              : Icon(Icons.menu_book_rounded, color: AppColors.accent),
-        ),
-        title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-        subtitle: Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
-        trailing: book.progress > 0
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                child: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600)),
-              )
-            : null,
-        onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
-      ),
-    );
-  }
-}
-
-class _ReadingGoalCard extends StatelessWidget {
-  final ReadingGoalModel goal;
-  const _ReadingGoalCard({required this.goal});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final progress = goal.overallProgress.clamp(0.0, 1.0);
-    return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.flag_rounded, color: AppColors.accent, size: 22),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      book.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star_rounded, size: 14, color: AppColors.rating),
+                        const SizedBox(width: 2),
+                        Text(
+                          "4.5",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.rating,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            genre,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      book.description ?? "No description available.",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                    const Spacer(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        onPressed: onSave,
+                        icon: Icon(
+                          book.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          size: 20,
+                          color: book.isFavorite ? AppColors.accent : AppColors.textSecondary,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text("Reading Goal", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(value: progress, minHeight: 10, backgroundColor: AppColors.border, color: AppColors.accent),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("${goal.currentBooks} / ${goal.targetBooks} books", style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
-                Text("${(progress * 100).toInt()}%", style: theme.textTheme.labelMedium?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600)),
-              ],
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Center(
+      child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3)),
     );
   }
 }

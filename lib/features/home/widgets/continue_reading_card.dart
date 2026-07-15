@@ -10,49 +10,130 @@ class ContinueReadingCard extends StatelessWidget {
 
   const ContinueReadingCard({super.key, required this.book});
 
+  String _timeRemaining() {
+    final remaining = book.pageCount - book.currentPage;
+    if (remaining <= 0) return "Complete";
+    final mins = (remaining * 0.5).round();
+    if (mins < 60) return "${mins}m left";
+    final h = mins ~/ 60;
+    final m = mins % 60;
+    return "${h}h ${m}m left";
+  }
+
+  String _lastOpenedText() {
+    final lastOpened = book.lastOpenedAt;
+    if (lastOpened == null) return "";
+    final diff = DateTime.now().difference(lastOpened);
+    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
+    if (diff.inHours < 24) return "${diff.inHours}h ago";
+    if (diff.inDays < 7) return "${diff.inDays}d ago";
+    return "${(diff.inDays / 7).round()}w ago";
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
-    return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: Container(
-          width: 44,
-          height: 60,
-          decoration: BoxDecoration(
-            color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: hasCover
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent)),
-                )
-              : Icon(Icons.menu_book_rounded, color: AppColors.accent),
-        ),
-        title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(value: book.progress.clamp(0.0, 1.0), minHeight: 3, backgroundColor: AppColors.border),
+    final progress = book.progress.clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      child: Container(
+        width: 170,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: AppColors.cardDark,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-          child: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
+                  ),
+                  child: hasCover
+                      ? Image.file(
+                          File(book.coverPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _coverPlaceholder(),
+                        )
+                      : _coverPlaceholder(),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 4,
+                      backgroundColor: AppColors.border,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "${(progress * 100).toInt()}% • Page ${book.currentPage}",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        _timeRemaining(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.accent,
+                          fontSize: 10,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _lastOpenedText(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Center(
+      child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.4)),
     );
   }
 }
