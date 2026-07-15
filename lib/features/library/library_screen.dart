@@ -22,7 +22,9 @@ enum LibrarySort {
   const LibrarySort(this.label);
 }
 
-enum _BookFilter { all, favorites, reading, finished, pdf, epub, recentlyAdded }
+enum _BookFilter { all, favorites, reading, finished, recentlyAdded }
+
+enum _ViewMode { grid, list, compact }
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -35,8 +37,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<BookModel> _filteredBooks = [];
-  bool _isGridView = true;
-  LibrarySort _currentSort = LibrarySort.titleAsc;
+  _ViewMode _viewMode = _ViewMode.grid;
+  LibrarySort _currentSort = LibrarySort.recent;
   _BookFilter _selectedFilter = _BookFilter.all;
   Timer? _debounce;
   bool _isLoading = false;
@@ -87,13 +89,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         return books.where((b) => b.progress > 0 && b.progress < 1.0).toList();
       case _BookFilter.finished:
         return books.where((b) => b.progress >= 1.0).toList();
-      case _BookFilter.pdf:
-        return books.where((b) => b.format == BookFormat.pdf).toList();
-      case _BookFilter.epub:
-        return books.where((b) => b.format == BookFormat.epub).toList();
       case _BookFilter.recentlyAdded:
         books.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return books.take(10).toList();
+        return books;
     }
   }
 
@@ -540,20 +538,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final books = _filteredBooks;
+    final continueBooks = books.where((b) => b.progress > 0 && b.progress < 1).toList();
+    final recentlyAdded = _selectedFilter == _BookFilter.all ? books.where((b) => DateTime.now().difference(b.createdAt).inDays < 14).toList() : [];
+    final favorites = _selectedFilter == _BookFilter.all ? books.where((b) => b.isFavorite).toList() : [];
+    final finished = _selectedFilter == _BookFilter.all ? books.where((b) => b.progress >= 1).toList() : [];
+
+    final hasSections = _selectedFilter == _BookFilter.all && _searchController.text.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Library"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            tooltip: "Search",
-            onPressed: () => _searchController.text.isNotEmpty
-                ? _searchController.clear()
-                : null,
-          ),
-          const SizedBox(width: 4),
           PopupMenuButton<LibrarySort>(
             icon: const Icon(Icons.sort_rounded),
             tooltip: "Sort",
@@ -564,11 +561,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 child: Row(
                   children: [
                     if (_currentSort == sort)
-                      Icon(
-                        Icons.check,
-                        size: 18,
-                        color: theme.colorScheme.primary,
-                      )
+                      Icon(Icons.check, size: 18, color: theme.colorScheme.primary)
                     else
                       const SizedBox(width: 18),
                     const SizedBox(width: 8),
@@ -580,141 +573,95 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadBooks,
-        child: _isLoading && books.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: SegmentedButton<bool>(
-                          segments: const [
-                            ButtonSegment(
-                              value: true,
-                              icon: Icon(Icons.grid_view_rounded, size: 18),
-                              tooltip: "Grid view",
-                            ),
-                            ButtonSegment(
-                              value: false,
-                              icon: Icon(Icons.list_rounded, size: 18),
-                              tooltip: "List view",
-                            ),
-                          ],
-                          selected: {_isGridView},
-                          onSelectionChanged: (val) =>
-                              setState(() => _isGridView = val.first),
-                          style: SegmentedButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                hintText: "Search by title, author, or tags...",
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          Container(
+            height: 40,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildFilterChip("All", _BookFilter.all),
+                      _buildFilterChip("Reading", _BookFilter.reading),
+                      _buildFilterChip("Favorites", _BookFilter.favorites),
+                      _buildFilterChip("Finished", _BookFilter.finished),
+                      _buildFilterChip("Recent", _BookFilter.recentlyAdded),
+                      const SizedBox(width: 4),
+                      ActionChip(
+                        avatar: const Icon(Icons.folder_rounded, size: 16),
+                        label: const Text("Collection"),
+                        onPressed: () => _showCreateCollectionDialog(),
+                        visualDensity: VisualDensity.compact,
                       ),
-                    ),
+                    ],
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: _onSearchChanged,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search_rounded),
-                          hintText: "Search by title, author, or tags...",
-                        ),
-                      ),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 44,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          _buildFilterChip("All", _BookFilter.all),
-                          _buildFilterChip("Favorites", _BookFilter.favorites),
-                          _buildFilterChip("Reading", _BookFilter.reading),
-                          _buildFilterChip("Finished", _BookFilter.finished),
-                          _buildFilterChip("PDF", _BookFilter.pdf),
-                          _buildFilterChip("EPUB", _BookFilter.epub),
-                          _buildFilterChip("Recently Added", _BookFilter.recentlyAdded),
-                          const SizedBox(width: 4),
-                          ActionChip(
-                            avatar: const Icon(Icons.add_rounded, size: 16),
-                            label: const Text("Collection"),
-                            onPressed: () => _showCreateCollectionDialog(),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: Row(
+                    children: [
+                      _viewModeButton(Icons.grid_view_rounded, _ViewMode.grid),
+                      _viewModeButton(Icons.list_rounded, _ViewMode.list),
+                      _viewModeButton(Icons.view_stream_rounded, _ViewMode.compact),
+                    ],
                   ),
-                  if (books.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              "${books.length} book${books.length == 1 ? "" : "s"}",
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              _currentSort.label,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (books.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _buildEmptyState(theme),
-                    )
-                  else if (_isGridView)
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.68,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final book = books[index];
-                            return _buildGridCard(book, theme);
-                          },
-                          childCount: books.length,
-                        ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final book = books[index];
-                            return _buildListCard(book, theme);
-                          },
-                          childCount: books.length,
-                        ),
-                      ),
-                    ),
+                ),
+              ],
+            ),
+          ),
+          if (books.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: Row(
+                children: [
+                  Text(
+                    "${books.length} book${books.length == 1 ? "" : "s"}",
+                    style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _currentSort.label,
+                    style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
                 ],
               ),
+            ),
+          Expanded(
+            child: _isLoading && books.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadBooks,
+                    child: books.isEmpty
+                        ? _buildEmptyState(theme, colorScheme)
+                        : _buildBookSections(theme, colorScheme, books, continueBooks, recentlyAdded, favorites, finished, hasSections),
+                  ),
+          ),
+        ],
       ),
       floatingActionButton: _isImporting
           ? FloatingActionButton(
@@ -733,48 +680,378 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, _BookFilter filter) {
-    final isSelected = _selectedFilter == filter;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => _setFilter(filter),
+  Widget _viewModeButton(IconData icon, _ViewMode mode) {
+    final isSelected = _viewMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _viewMode = mode),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: isSelected ? AppColors.accent : null),
       ),
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildFilterChip(String label, _BookFilter filter) {
+    final isSelected = _selectedFilter == filter;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: FilterChip(
+        label: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+        selected: isSelected,
+        onSelected: (_) => _setFilter(filter),
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme, ColorScheme colorScheme) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        const SizedBox(height: 60),
+        Center(
+          child: Column(
+            children: [
+              Icon(Icons.menu_book_rounded, size: 80, color: AppColors.accent.withOpacity(0.3)),
+              const SizedBox(height: 20),
+              Text(
+                "Your Library is Empty",
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  "Import your first book to start building your personal digital bookshelf",
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _importBooks,
+                icon: const Icon(Icons.upload_file_rounded, size: 20),
+                label: const Text("Import Book"),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => context.push(AppConstants.routeBrowse),
+                icon: const Icon(Icons.explore_rounded, size: 20),
+                label: const Text("Browse Online Books"),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookSections(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    List<BookModel> books,
+    List<BookModel> continueBooks,
+    List<BookModel> recentlyAdded,
+    List<BookModel> favorites,
+    List<BookModel> finished,
+    bool hasSections,
+  ) {
+    if (!hasSections) {
+      return _buildBookGrid(theme, books);
+    }
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        if (continueBooks.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _sectionHeader("Continue Reading", () {})),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: continueBooks.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildSectionBookCard(continueBooks[i], theme),
+                ),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        ],
+        if (recentlyAdded.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _sectionHeader("Recently Added", null)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: recentlyAdded.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildSectionBookCard(recentlyAdded[i], theme),
+                ),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        ],
+        if (favorites.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _sectionHeader("Favorites", null)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: favorites.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildSectionBookCard(favorites[i], theme),
+                ),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        ],
+        if (finished.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _sectionHeader("Finished", null)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: finished.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildSectionBookCard(finished[i], theme),
+                ),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        ],
+        _sectionHeader("All Books", null),
+        _buildBookGridSliver(theme, books),
+        const SliverToBoxAdapter(child: SizedBox(height: 80)),
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String title, VoidCallback? onSeeAll) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
         children: [
-          Icon(
-            Icons.menu_book_rounded,
-            size: 64,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
-          ),
-          const SizedBox(height: 16),
           Text(
-            _searchController.text.isEmpty
-                ? "Your library is empty"
-                : "No books found",
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _searchController.text.isEmpty
-                ? "Import your first book to get started"
-                : "Try a different search term",
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          const Spacer(),
+          if (onSeeAll != null)
+            TextButton(
+              onPressed: onSeeAll,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text("See All", style: TextStyle(fontSize: 13)),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionBookCard(BookModel book, ThemeData theme) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    final status = book.progress >= 1 ? "Finished" : book.progress > 0 ? "${(book.progress * 100).toInt()}%" : null;
+
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: () => _showBookActions(book),
+      child: SizedBox(
+        width: 130,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 130,
+                    height: 180,
+                    color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.08),
+                    child: hasCover
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _coverPlaceholder())
+                        : _coverPlaceholder(),
+                  ),
+                ),
+                if (status != null)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: book.progress >= 1 ? AppColors.finished : AppColors.reading,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        status,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                if (book.isFavorite)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.favorite_rounded, color: AppColors.accent, size: 14),
+                    ),
+                  ),
+                if (book.progress > 0 && book.progress < 1)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(14),
+                        bottomRight: Radius.circular(14),
+                      ),
+                      child: LinearProgressIndicator(
+                        value: book.progress.clamp(0.0, 1.0),
+                        minHeight: 3,
+                        backgroundColor: Colors.black.withOpacity(0.2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              book.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              book.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookGrid(ThemeData theme, List<BookModel> books) {
+    switch (_viewMode) {
+      case _ViewMode.grid:
+        return _buildGridView(theme, books);
+      case _ViewMode.list:
+        return _buildListView(theme, books);
+      case _ViewMode.compact:
+        return _buildCompactView(theme, books);
+    }
+  }
+
+  Widget _buildBookGridSliver(ThemeData theme, List<BookModel> books) {
+    switch (_viewMode) {
+      case _ViewMode.grid:
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.72,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildGridCard(books[index], theme),
+              childCount: books.length,
+            ),
+          ),
+        );
+      case _ViewMode.list:
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildListCard(books[index], theme),
+              childCount: books.length,
+            ),
+          ),
+        );
+      case _ViewMode.compact:
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildCompactCard(books[index], theme),
+              childCount: books.length,
+            ),
+          ),
+        );
+    }
+  }
+
+  Widget _buildGridView(ThemeData theme, List<BookModel> books) {
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.72,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: books.length,
+      itemBuilder: (_, i) => _buildGridCard(books[i], theme),
+    );
+  }
+
+  Widget _buildListView(ThemeData theme, List<BookModel> books) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      itemCount: books.length,
+      itemBuilder: (_, i) => _buildListCard(books[i], theme),
+    );
+  }
+
+  Widget _buildCompactView(ThemeData theme, List<BookModel> books) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      itemCount: books.length,
+      itemBuilder: (_, i) => _buildCompactCard(books[i], theme),
     );
   }
 
@@ -784,74 +1061,80 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
       onLongPress: () => _showBookActions(book),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Card(
-              color: AppColors.cardDark,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-              ),
-              clipBehavior: Clip.antiAlias,
-              margin: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
+                    child: hasCover
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3))))
+                        : Center(child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3))),
+                  ),
+                ),
+                if (book.isFavorite)
+                  Positioned(
+                    top: 6,
+                    right: 6,
                     child: Container(
-                      width: double.infinity,
-                      color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.1),
-                      child: Stack(
-                        alignment: Alignment.bottomCenter,
-                        children: [
-                          hasCover
-                              ? Image.file(File(book.coverPath!), fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 48, color: AppColors.accent.withOpacity(0.5)))
-                              : Center(child: Icon(Icons.menu_book_rounded, size: 48, color: AppColors.accent.withOpacity(0.5))),
-                          if (book.progress > 0)
-                            Container(
-                              height: 4,
-                              width: double.infinity,
-                              color: AppColors.cardDark,
-                              child: FractionallySizedBox(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: book.progress.clamp(0.0, 1.0),
-                                child: Container(color: AppColors.accent),
-                              ),
-                            ),
-                        ],
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.25),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.favorite_rounded, color: AppColors.accent, size: 14),
+                    ),
+                  ),
+                if (book.progress >= 1)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.finished, borderRadius: BorderRadius.circular(6)),
+                      child: const Text("Finished", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+                    ),
+                  )
+                else if (book.progress > 0)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.reading, borderRadius: BorderRadius.circular(6)),
+                      child: Text("${(book.progress * 100).toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                if (book.progress > 0 && book.progress < 1)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+                      child: LinearProgressIndicator(
+                        value: book.progress.clamp(0.0, 1.0),
+                        minHeight: 3,
+                        backgroundColor: Colors.black.withOpacity(0.15),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                        if (book.progress > 0) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                            child: Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 11)),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
-          Container(
-            height: 6,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A1F0E).withOpacity(0.25),
-              borderRadius: BorderRadius.circular(3),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 2, offset: const Offset(0, 1)),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
               ],
             ),
           ),
@@ -861,102 +1144,120 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   Widget _buildListCard(BookModel book, ThemeData theme) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
     return Card(
-      color: AppColors.cardDark,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-      ),
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
         onLongPress: () => _showBookActions(book),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: book.coverPath != null && book.coverPath!.isNotEmpty ? Colors.transparent : AppColors.accent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 56,
+                  height: 72,
+                  color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
+                  child: hasCover
+                      ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 28, color: AppColors.accent.withOpacity(0.3)))
+                      : Icon(Icons.menu_book_rounded, size: 28, color: AppColors.accent.withOpacity(0.3)),
                 ),
-                child: book.coverPath != null && book.coverPath!.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, color: AppColors.accent.withOpacity(0.5), size: 24)),
-                      )
-                    : Icon(Icons.menu_book_rounded, color: AppColors.accent.withOpacity(0.5), size: 24),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      book.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        ),
+                        if (book.isFavorite)
+                          const Icon(Icons.favorite_rounded, color: AppColors.accent, size: 16),
+                      ],
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      book.author,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: book.progress.clamp(0.0, 1.0),
+                              minHeight: 4,
+                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text("${(book.progress * 100).toInt()}%", style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: AppColors.accent, fontSize: 11)),
+                      ],
                     ),
-                    if (book.progress > 0) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: book.progress.clamp(0.0, 1.0),
-                                minHeight: 3,
-                                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "${(book.progress * 100).toInt()}%",
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  book.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: book.isFavorite ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
-                  size: 20,
-                ),
-                onPressed: () => _toggleFavorite(book),
-              ),
               const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right,
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
-                size: 20,
-              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3), size: 20),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCompactCard(BookModel book, ThemeData theme) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    return InkWell(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: () => _showBookActions(book),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 36,
+                height: 48,
+                color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
+                child: hasCover
+                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 18, color: AppColors.accent.withOpacity(0.3)))
+                    : Icon(Icons.menu_book_rounded, size: 18, color: AppColors.accent.withOpacity(0.3)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                  Text(book.author, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
+                ],
+              ),
+            ),
+            if (book.isFavorite)
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.favorite_rounded, color: AppColors.accent, size: 14),
+              ),
+            Text("${(book.progress * 100).toInt()}%", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, size: 16, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Center(
+      child: Icon(Icons.menu_book_rounded, size: 32, color: AppColors.accent.withOpacity(0.3)),
     );
   }
 }

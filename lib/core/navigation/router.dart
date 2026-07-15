@@ -20,6 +20,7 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/reader/reader_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
 import '../../features/bookmarks/notes_screen.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../features/profile/reading_list_screen.dart';
 import '../../features/share/share_screen.dart';
 
@@ -125,6 +126,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppConstants.routeReadingLists,
       builder: (context, state) => const ReadingListScreen(),
+    ),
+    GoRoute(
+      path: AppConstants.routeNotifications,
+      builder: (context, state) => const NotificationsScreen(),
     ),
     GoRoute(
       path: AppConstants.routeShare,

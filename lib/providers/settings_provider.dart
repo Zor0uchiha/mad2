@@ -14,7 +14,7 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((r
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   final Ref _ref;
 
-  ThemeModeNotifier(this._ref) : super(ThemeMode.system);
+  ThemeModeNotifier(this._ref) : super(ThemeMode.dark);
 
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;

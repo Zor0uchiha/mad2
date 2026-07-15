@@ -36,7 +36,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -110,14 +110,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                   delegate: _TabBarDelegate(
                     TabBar(
                       controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      labelColor: AppColors.accent,
+                      unselectedLabelColor: colorScheme.onSurfaceVariant,
+                      indicatorColor: AppColors.accent,
                       tabs: const [
                         Tab(text: "Books"),
-                        Tab(text: "Achievements"),
-                        Tab(text: "Collections"),
+                        Tab(text: "Reviews"),
                         Tab(text: "Lists"),
+                        Tab(text: "Collections"),
+                        Tab(text: "Achievements"),
                       ],
                     ),
-                    colorScheme.surface,
+                    theme.colorScheme.surface,
                   ),
                 ),
               ];
@@ -126,9 +132,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
               controller: _tabController,
               children: [
                 _BooksTab(books: books),
-                _AchievementsTab(books: books, streak: user.readingStreak),
-                _CollectionsTab(),
+                _ReviewsTab(books: books),
                 _ListsTab(),
+                _CollectionsTab(),
+                _AchievementsTab(books: books, streak: user.readingStreak),
               ],
             ),
           );
@@ -163,36 +170,42 @@ class _ProfileHeader extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 52,
-            backgroundColor: AppColors.cardDark,
-            child: Icon(Icons.person_rounded, size: 52, color: AppColors.accent),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: AppColors.accent.withOpacity(0.15),
+                child: Icon(Icons.person_rounded, size: 40, color: AppColors.accent),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.displayName ?? "Reader", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    if (user.bio != null && user.bio!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(user.bio!, style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(user.displayName ?? "Reader", style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-          if (user.bio != null && user.bio!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(user.bio!, style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
-          ],
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.cardDark,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _StatColumn(value: booksRead.toString(), label: "Books"),
-                _StatColumn(value: currentlyReading.toString(), label: "Reading"),
-                _StatColumn(value: finishedBooks.toString(), label: "Finished"),
-                _StatColumn(value: "$streak", label: "Streak"),
-              ],
-            ),
+          Row(
+            children: [
+              _StatPill(value: booksRead.toString(), label: "Books", color: AppColors.accent),
+              const SizedBox(width: 8),
+              _StatPill(value: currentlyReading.toString(), label: "Reading", color: AppColors.reading),
+              const SizedBox(width: 8),
+              _StatPill(value: finishedBooks.toString(), label: "Finished", color: AppColors.finished),
+              const SizedBox(width: 8),
+              _StatPill(value: "$streak", label: "Streak", color: AppColors.streak),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -200,22 +213,22 @@ class _ProfileHeader extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _showEditProfile(context),
-                  icon: const Icon(Icons.edit_rounded),
+                  icon: const Icon(Icons.edit_rounded, size: 18),
                   label: const Text("Edit Profile"),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onTogglePrivacy,
-                  icon: Icon(user.isPublicProfile ? Icons.public_rounded : Icons.lock_rounded),
+                  icon: Icon(user.isPublicProfile ? Icons.public_rounded : Icons.lock_rounded, size: 18),
                   label: Text(user.isPublicProfile ? "Public" : "Private"),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _ReadingCalendar(streak: streak),
+          _ReadingHeatmap(streak: streak),
         ],
       ),
     );
@@ -230,123 +243,99 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _ReadingCalendar extends ConsumerWidget {
+class _StatPill extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatPill({required this.value, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color.withOpacity(0.7), fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadingHeatmap extends ConsumerWidget {
   final int streak;
 
-  const _ReadingCalendar({required this.streak});
+  const _ReadingHeatmap({required this.streak});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final readingDates = ref.watch(_profileReadingDatesProvider).asData?.value ?? {};
     final now = DateTime.now();
-    final firstDay = DateTime(now.year, now.month, 1);
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final startWeekday = firstDay.weekday % 7;
 
-    final dayCells = <Widget>[];
-    for (int i = 0; i < startWeekday; i++) {
-      dayCells.add(const SizedBox(width: 28, height: 28));
-    }
-    for (int day = 1; day <= daysInMonth; day++) {
-      final date = DateTime(now.year, now.month, day);
-      final isToday = date == DateTime(now.year, now.month, now.day);
-      final isFuture = date.isAfter(now);
-      final isActive = readingDates.contains(date);
-
-      Color cellColor;
-      Color textColor;
-      FontWeight fontWeight;
-
-      if (isToday) {
-        cellColor = AppColors.accent;
-        textColor = Colors.white;
-        fontWeight = FontWeight.bold;
-      } else if (isFuture) {
-        cellColor = Colors.transparent;
-        textColor = AppColors.textSecondary.withOpacity(0.3);
-        fontWeight = FontWeight.normal;
-      } else if (isActive) {
-        cellColor = AppColors.accent.withOpacity(0.3);
-        textColor = AppColors.textPrimary;
-        fontWeight = FontWeight.normal;
-      } else {
-        cellColor = AppColors.border;
-        textColor = AppColors.textSecondary;
-        fontWeight = FontWeight.normal;
+    final cells = <Widget>[];
+    for (int w = 0; w < 20; w++) {
+      for (int d = 0; d < 7; d++) {
+        final dayOffset = (19 - w) * 7 + (6 - d);
+        final date = now.subtract(Duration(days: dayOffset));
+        final isActive = readingDates.contains(DateTime(date.year, date.month, date.day));
+        cells.add(
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.accent : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        );
       }
-
-      dayCells.add(Container(
-        width: 28, height: 28,
-        decoration: BoxDecoration(color: cellColor, borderRadius: BorderRadius.circular(6)),
-        child: Center(child: Text("$day", style: TextStyle(fontSize: 10, fontWeight: fontWeight, color: textColor))),
-      ));
     }
-
-    final rows = <Widget>[];
-    for (int i = 0; i < dayCells.length; i += 7) {
-      final end = i + 7 > dayCells.length ? dayCells.length : i + 7;
-      final rowCells = dayCells.sublist(i, end);
-      while (rowCells.length < 7) {
-        rowCells.add(const SizedBox(width: 28, height: 28));
-      }
-      rows.add(Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: rowCells),
-      ));
-    }
-
-    const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
-    final headerRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: weekdays.map((d) => SizedBox(
-        width: 28,
-        child: Center(child: Text(d, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
-      )).toList(),
-    );
-
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(20),
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.accent),
-              const SizedBox(width: 8),
-              Text(monthNames[now.month - 1], style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Icon(Icons.local_fire_department_rounded, size: 16, color: AppColors.streak),
+              const SizedBox(width: 6),
+              Text("Reading Activity", style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.streak.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: BoxDecoration(color: AppColors.streak.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.streak),
-                    const SizedBox(width: 4),
-                    Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.streak)),
+                    Icon(Icons.local_fire_department_rounded, size: 12, color: AppColors.streak),
+                    const SizedBox(width: 3),
+                    Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.streak)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          headerRow,
-          const SizedBox(height: 8),
-          ...rows,
+          Wrap(
+            spacing: 3,
+            runSpacing: 3,
+            children: cells,
+          ),
         ],
       ),
     );
@@ -420,23 +409,6 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   }
 }
 
-class _StatColumn extends StatelessWidget {
-  final String value;
-  final String label;
-  const _StatColumn({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppColors.accent)),
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-      ],
-    );
-  }
-}
-
 class _BooksTab extends StatelessWidget {
   final List<BookModel> books;
   const _BooksTab({required this.books});
@@ -449,58 +421,217 @@ class _BooksTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.menu_book_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 8),
-            Text("No books in your library", style: theme.textTheme.bodyMedium),
+            Icon(Icons.menu_book_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+            const SizedBox(height: 12),
+            Text("No books yet", style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text("Start reading to build your library", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: books.length,
+
+    final finished = books.where((b) => b.progress >= 1).toList();
+    final pages = books.fold<int>(0, (sum, b) => sum + b.pageCount);
+    final genres = <String>[];
+    for (final b in books) {
+      for (final t in b.tags) {
+        if (!genres.contains(t)) genres.add(t);
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            _InfoChip(icon: Icons.check_circle_rounded, value: "${finished.length} Finished", color: AppColors.finished),
+            const SizedBox(width: 8),
+            _InfoChip(icon: Icons.menu_book_rounded, value: "$pages Pages", color: AppColors.reading),
+            const SizedBox(width: 8),
+            _InfoChip(icon: Icons.category_rounded, value: "${genres.length} Genres", color: AppColors.rating),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text("Reading History", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ...books.map((book) => _HistoryItem(book: book)),
+      ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final Color color;
+
+  const _InfoChip({required this.icon, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryItem extends StatelessWidget {
+  final BookModel book;
+
+  const _HistoryItem({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 36,
+            height: 48,
+            color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
+            child: hasCover
+                ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 20, color: AppColors.accent.withOpacity(0.3)))
+                : Icon(Icons.menu_book_rounded, size: 20, color: AppColors.accent.withOpacity(0.3)),
+          ),
+        ),
+        title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+        subtitle: Text("${(book.progress * 100).toInt()}% complete", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+        trailing: Text(book.progress >= 1 ? "Finished" : "Reading", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: book.progress >= 1 ? AppColors.finished : AppColors.reading)),
+      ),
+    );
+  }
+}
+
+class _ReviewsTab extends StatelessWidget {
+  final List<BookModel> books;
+  const _ReviewsTab({required this.books});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.rate_review_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+          const SizedBox(height: 12),
+          Text("No Reviews Yet", style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text("Share your thoughts on books you've read", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ListsTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final listsBoxAsync = ref.watch(readingListsBoxProvider);
+    final lists = listsBoxAsync.asData?.value?.values.toList() ?? [];
+    if (lists.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.list_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+            const SizedBox(height: 12),
+            Text("No Reading Lists", style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            FilledButton.icon(
+              onPressed: () => context.push(AppConstants.routeReadingLists),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text("Create List"),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: lists.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
-        final book = books[index];
+        final list = lists[index];
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(20),
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: Container(
-              width: 40,
-              height: 52,
-              decoration: BoxDecoration(
-                color: book.coverPath != null && book.coverPath!.isNotEmpty ? Colors.transparent : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: book.coverPath != null && book.coverPath!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.menu_book_rounded, size: 24)),
-                    )
-                  : const Icon(Icons.menu_book_rounded, size: 24),
+            leading: CircleAvatar(
+              backgroundColor: AppColors.accent.withOpacity(0.15),
+              child: Icon(Icons.list_rounded, color: AppColors.accent, size: 20),
             ),
-            title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("${book.author} \u2022 ${(book.progress * 100).toInt()}%", style: theme.textTheme.bodySmall),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: book.progress,
-                    minHeight: 4,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                ),
-              ],
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+            title: Text(list.title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+            subtitle: Text("${list.bookCount} books", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+            onTap: () => context.push(AppConstants.routeReadingLists),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CollectionsTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
+    if (collections.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.folder_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+            const SizedBox(height: 12),
+            Text("No Collections", style: theme.textTheme.titleSmall),
+          ],
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: collections.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final c = collections[index];
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(backgroundColor: c.color, radius: 18, child: Icon(Icons.folder_rounded, color: Colors.white, size: 18)),
+            title: Text(c.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+            subtitle: Text("${c.bookCount} books", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+            onTap: () => context.push("${AppConstants.routeCollectionDetail}/${c.id}"),
           ),
         );
       },
@@ -521,42 +652,12 @@ class _AchievementsTab extends StatelessWidget {
     final totalPages = books.fold<int>(0, (sum, b) => sum + b.pageCount);
 
     final achievements = [
-      _Achievement(
-        icon: Icons.menu_book_rounded,
-        label: "First Book",
-        description: "Read your first book",
-        unlocked: finishedCount >= 1,
-      ),
-      _Achievement(
-        icon: Icons.library_books_rounded,
-        label: "Bookworm",
-        description: "Read 5 books",
-        unlocked: finishedCount >= 5,
-      ),
-      _Achievement(
-        icon: Icons.school_rounded,
-        label: "Scholar",
-        description: "Read 10 books",
-        unlocked: finishedCount >= 10,
-      ),
-      _Achievement(
-        icon: Icons.local_fire_department_rounded,
-        label: "On Fire",
-        description: "7-day reading streak",
-        unlocked: streak >= 7,
-      ),
-      _Achievement(
-        icon: Icons.whatshot_rounded,
-        label: "Unstoppable",
-        description: "30-day reading streak",
-        unlocked: streak >= 30,
-      ),
-      _Achievement(
-        icon: Icons.chrome_reader_mode_rounded,
-        label: "Page Turner",
-        description: "Read 1000 pages",
-        unlocked: totalPages >= 1000,
-      ),
+      _Achievement(icon: Icons.menu_book_rounded, label: "First Book", description: "Read your first book", unlocked: finishedCount >= 1),
+      _Achievement(icon: Icons.library_books_rounded, label: "Bookworm", description: "Read 5 books", unlocked: finishedCount >= 5),
+      _Achievement(icon: Icons.school_rounded, label: "Scholar", description: "Read 10 books", unlocked: finishedCount >= 10),
+      _Achievement(icon: Icons.local_fire_department_rounded, label: "On Fire", description: "7-day reading streak", unlocked: streak >= 7),
+      _Achievement(icon: Icons.whatshot_rounded, label: "Unstoppable", description: "30-day reading streak", unlocked: streak >= 30),
+      _Achievement(icon: Icons.chrome_reader_mode_rounded, label: "Page Turner", description: "Read 1000 pages", unlocked: totalPages >= 1000),
     ];
 
     if (achievements.where((a) => a.unlocked).isEmpty) {
@@ -564,9 +665,9 @@ class _AchievementsTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.emoji_events_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 8),
-            Text("No achievements yet", style: theme.textTheme.bodyMedium),
+            Icon(Icons.emoji_events_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+            const SizedBox(height: 12),
+            Text("No Achievements Yet", style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
             Text("Keep reading to unlock achievements!", style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
@@ -574,34 +675,34 @@ class _AchievementsTab extends StatelessWidget {
       );
     }
 
-    return ListView(
+    return GridView.builder(
       padding: const EdgeInsets.all(16),
-      children: achievements.map((a) {
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.1,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: achievements.length,
+      itemBuilder: (_, i) {
+        final a = achievements[i];
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(20),
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(a.unlocked ? 0.5 : 0.3),
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: CircleAvatar(
-              backgroundColor: a.unlocked ? AppColors.accent.withOpacity(0.15) : theme.colorScheme.surfaceContainerHighest,
-              child: Icon(
-                a.icon,
-                color: a.unlocked ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            title: Text(a.label, style: TextStyle(fontWeight: a.unlocked ? FontWeight.w600 : FontWeight.normal)),
-            subtitle: Text(a.description, style: theme.textTheme.bodySmall),
-            trailing: Icon(
-              a.unlocked ? Icons.check_circle_rounded : Icons.lock_rounded,
-              color: a.unlocked ? AppColors.accent : theme.colorScheme.onSurfaceVariant,
-              size: 20,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(a.icon, size: 28, color: a.unlocked ? AppColors.accent : theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+              const SizedBox(height: 8),
+              Text(a.label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: a.unlocked ? null : theme.colorScheme.onSurfaceVariant.withOpacity(0.4))),
+              const SizedBox(height: 2),
+              Text(a.description, style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)), textAlign: TextAlign.center),
+            ],
           ),
         );
-      }).toList(),
+      },
     );
   }
 }
@@ -618,100 +719,6 @@ class _Achievement {
     required this.description,
     required this.unlocked,
   });
-}
-
-class _CollectionsTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final collections = ref.watch(allCollectionsProvider).asData?.value ?? [];
-    if (collections.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.folder_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 8),
-            Text("No collections", style: theme.textTheme.bodyMedium),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: collections.length,
-      itemBuilder: (context, index) {
-        final c = collections[index];
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: CircleAvatar(backgroundColor: c.color, child: Icon(Icons.folder_rounded, color: Colors.white)),
-            title: Text(c.name),
-            subtitle: Text("${c.bookCount} books"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push("${AppConstants.routeCollectionDetail}/${c.id}"),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ListsTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final listsBoxAsync = ref.watch(readingListsBoxProvider);
-    final lists = listsBoxAsync.asData?.value?.values.toList() ?? [];
-    if (lists.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.list_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 8),
-            Text("No reading lists", style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 4),
-            FilledButton.icon(
-              onPressed: () => context.push(AppConstants.routeReadingLists),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text("Create List"),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: lists.length,
-      itemBuilder: (context, index) {
-        final list = lists[index];
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: CircleAvatar(
-              backgroundColor: AppColors.accent.withOpacity(0.15),
-              child: Icon(Icons.list_rounded, color: AppColors.accent),
-            ),
-            title: Text(list.title),
-            subtitle: Text("${list.bookCount} books"),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(AppConstants.routeReadingLists),
-          ),
-        );
-      },
-    );
-  }
 }
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {

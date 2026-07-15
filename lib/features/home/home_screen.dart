@@ -131,7 +131,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push(AppConstants.routeSettings),
+            onPressed: () => context.push(AppConstants.routeNotifications),
           ),
           IconButton(
             icon: const Icon(Icons.settings_rounded),

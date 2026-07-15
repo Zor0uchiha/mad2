@@ -65,7 +65,7 @@ List<_ActivityItem> _buildActivityItems(List<BookModel> books) {
     final isFinished = book.progress >= 1;
     items.add(_ActivityItem(
       bookTitle: book.title,
-      action: isFinished ? "Finished" : "Started reading",
+      action: isFinished ? "Finished reading" : "Reading update",
       icon: isFinished ? Icons.check_circle_rounded : Icons.menu_book_rounded,
       iconColor: isFinished ? AppColors.finished : AppColors.reading,
       timestamp: ts,
@@ -93,6 +93,7 @@ class ActivityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final books = ref.watch(allBooksProvider).asData?.value ?? [];
     final totalBooks = ref.watch(totalBooksProvider).asData?.value ?? 0;
     final totalPages = ref.watch(totalPagesReadProvider).asData?.value ?? 0;
@@ -104,567 +105,273 @@ class ActivityScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Activity")),
-      body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: () => _refresh(ref),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            _buildStatsHeader(context, totalBooks, totalPages, streak, finishedCount),
-            const SizedBox(height: 24),
+            _buildStatsRow(totalBooks, totalPages, streak, finishedCount, theme, colorScheme),
+            const SizedBox(height: 20),
             if (readingGoal != null && readingGoal.targetBooks > 0) ...[
-              _buildReadingGoal(context, readingGoal),
-              const SizedBox(height: 24),
+              _buildReadingGoal(context, readingGoal, colorScheme),
+              const SizedBox(height: 20),
             ],
-            _SectionHeader(icon: Icons.history_rounded, title: "Recent Activity"),
+            _sectionHeader("Activity Timeline"),
             const SizedBox(height: 12),
             if (activityItems.isEmpty)
-              _buildEmptyActivity(context, theme)
+              _buildEmptyActivity(theme, colorScheme)
             else
-              _buildTimeline(context, activityItems),
-            const SizedBox(height: 24),
-            _SectionHeader(icon: Icons.calendar_month_rounded, title: "Monthly Heatmap"),
+              ...activityItems.take(20).map((item) => _TimelineItem(item: item, theme: theme)),
+            const SizedBox(height: 20),
+            _sectionHeader("Reading Heatmap"),
             const SizedBox(height: 12),
-            _buildCalendar(context, streak, readingDates),
+            _buildHeatmap(context, streak, readingDates, colorScheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatsHeader(
-    BuildContext context,
-    int totalBooks,
-    int totalPages,
-    int streak,
-    int finishedCount,
-  ) {
+  Future<void> _refresh(WidgetRef ref) async {
+    await Future.wait([
+      ref.refresh(allBooksProvider.future),
+      ref.refresh(totalBooksProvider.future),
+      ref.refresh(totalPagesReadProvider.future),
+    ]);
+  }
+
+  Widget _sectionHeader(String title) {
     return Row(
       children: [
-        Expanded(child: _StatCard(
-          title: "Books Read",
-          value: "$finishedCount",
-          icon: Icons.check_circle_rounded,
-          iconColor: AppColors.finished,
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(
-          title: "Pages Read",
-          value: "$totalPages",
-          icon: Icons.menu_book_rounded,
-          iconColor: AppColors.reading,
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(
-          title: "Day Streak",
-          value: "$streak",
-          icon: Icons.local_fire_department_rounded,
-          iconColor: AppColors.streak,
-        )),
-      ],
-    );
-  }
-
-  Widget _buildReadingGoal(BuildContext context, ReadingGoalModel goal) {
-    final theme = Theme.of(context);
-    final progress = goal.overallProgress.clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(icon: Icons.flag_rounded, title: "Reading Goal"),
-        const SizedBox(height: 12),
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.streak.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.flag_rounded,
-                        color: AppColors.streak,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      "Reading Goal",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 10,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                    color: AppColors.streak,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "${goal.currentBooks} / ${goal.targetBooks} books",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      "${(progress * 100).toInt()}%",
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeline(BuildContext context, List<_ActivityItem> items) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          children: List.generate(items.length, (index) {
-            final item = items[index];
-            final isLast = index == items.length - 1;
-            return _TimelineItem(
-              item: item,
-              isLast: isLast,
-              theme: theme,
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyActivity(BuildContext context, ThemeData theme) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-        child: Column(
-          children: [
-            Icon(
-              Icons.history_rounded,
-              size: 48,
-              color: AppColors.textSecondary.withOpacity(0.4),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "No activity yet",
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Start reading to see your activity here",
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCalendar(BuildContext context, int streak, Set<DateTime> readingDates) {
-    final theme = Theme.of(context);
-    final now = DateTime.now();
-    final firstDay = DateTime(now.year, now.month, 1);
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final startWeekday = firstDay.weekday % 7;
-
-    final dayCells = <Widget>[];
-    for (int i = 0; i < startWeekday; i++) {
-      dayCells.add(const SizedBox(width: 28, height: 28));
-    }
-    for (int day = 1; day <= daysInMonth; day++) {
-      final date = DateTime(now.year, now.month, day);
-      final isToday = date == DateTime(now.year, now.month, now.day);
-      final isFuture = date.isAfter(now);
-      final isActive = readingDates.contains(date);
-
-      Color cellColor;
-      Color textColor;
-      FontWeight fontWeight;
-
-      if (isToday) {
-        cellColor = AppColors.accent;
-        textColor = Colors.white;
-        fontWeight = FontWeight.bold;
-      } else if (isFuture) {
-        cellColor = Colors.transparent;
-        textColor = AppColors.textSecondary.withOpacity(0.3);
-        fontWeight = FontWeight.normal;
-      } else if (isActive) {
-        cellColor = AppColors.accent.withOpacity(0.3);
-        textColor = AppColors.textPrimary;
-        fontWeight = FontWeight.normal;
-      } else {
-        cellColor = AppColors.border;
-        textColor = AppColors.textSecondary;
-        fontWeight = FontWeight.normal;
-      }
-
-      dayCells.add(Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: cellColor,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: Text(
-            "$day",
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: fontWeight,
-              color: textColor,
-            ),
-          ),
-        ),
-      ));
-    }
-
-    final rows = <Widget>[];
-    for (int i = 0; i < dayCells.length; i += 7) {
-      final end = i + 7 > dayCells.length ? dayCells.length : i + 7;
-      final rowCells = dayCells.sublist(i, end);
-      while (rowCells.length < 7) {
-        rowCells.add(const SizedBox(width: 28, height: 28));
-      }
-      rows.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: rowCells,
-          ),
-        ),
-      );
-    }
-
-    const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
-    final headerRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: weekdays.map((d) => SizedBox(
-        width: 28,
-        child: Center(
-          child: Text(
-            d,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      )).toList(),
-    );
-
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.accent),
-                const SizedBox(width: 8),
-                Text(
-                  monthNames[now.month - 1],
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.streak.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.streak),
-                      const SizedBox(width: 4),
-                      Text(
-                        "$streak day${streak == 1 ? "" : "s"}",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.streak,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            headerRow,
-            const SizedBox(height: 8),
-            ...rows,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _SectionHeader({
-    required this.icon,
-    required this.title,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.accent),
-        const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatsRow(int totalBooks, int totalPages, int streak, int finishedCount, ThemeData theme, ColorScheme colorScheme) {
+    return Row(
+      children: [
+        _StatPill(value: "$finishedCount", label: "Finished", icon: Icons.check_circle_rounded, color: AppColors.finished),
+        const SizedBox(width: 8),
+        _StatPill(value: "$totalPages", label: "Pages", icon: Icons.menu_book_rounded, color: AppColors.reading),
+        const SizedBox(width: 8),
+        _StatPill(value: "$streak", label: "Day Streak", icon: Icons.local_fire_department_rounded, color: AppColors.streak),
+      ],
+    );
+  }
+
+  Widget _buildReadingGoal(BuildContext context, ReadingGoalModel goal, ColorScheme colorScheme) {
+    final theme = Theme.of(context);
+    final progress = goal.overallProgress.clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: AppColors.streak.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                child: Icon(Icons.flag_rounded, color: AppColors.streak, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text("Reading Goal", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text("${(progress * 100).toInt()}%", style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              color: AppColors.streak,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text("${goal.currentBooks} / ${goal.targetBooks} books", style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyActivity(ThemeData theme, ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        children: [
+          Icon(Icons.history_rounded, size: 48, color: colorScheme.onSurfaceVariant.withOpacity(0.3)),
+          const SizedBox(height: 12),
+          Text("No Activity Yet", style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 4),
+          Text("Start reading to see your activity here", style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant.withOpacity(0.6))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeatmap(BuildContext context, int streak, Set<DateTime> readingDates, ColorScheme colorScheme) {
+    final now = DateTime.now();
+
+    final cells = <Widget>[];
+    for (int w = 0; w < 26; w++) {
+      for (int d = 0; d < 7; d++) {
+        final dayOffset = (25 - w) * 7 + (6 - d);
+        final date = now.subtract(Duration(days: dayOffset));
+        final isActive = readingDates.contains(DateTime(date.year, date.month, date.day));
+        cells.add(
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.accent : colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_month_rounded, size: 16, color: AppColors.accent),
+              const SizedBox(width: 6),
+              Text("Last 6 months", style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.streak.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_fire_department_rounded, size: 12, color: AppColors.streak),
+                    const SizedBox(width: 3),
+                    Text("$streak day${streak == 1 ? "" : "s"}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.streak)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 2,
+            runSpacing: 2,
+            children: cells,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _StatPill({required this.value, required this.label, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 4),
+            Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color.withOpacity(0.7), fontSize: 10)),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class _TimelineItem extends StatelessWidget {
   final _ActivityItem item;
-  final bool isLast;
   final ThemeData theme;
 
-  const _TimelineItem({
-    required this.item,
-    required this.isLast,
-    required this.theme,
-  });
+  const _TimelineItem({required this.item, required this.theme});
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 48,
-            child: Column(
-              children: [
-                const SizedBox(height: 14),
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: item.iconColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: item.iconColor.withOpacity(0.3),
-                      width: 3,
-                    ),
-                  ),
-                ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: AppColors.border.withOpacity(0.4),
-                    ),
-                  ),
-              ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: item.iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: Icon(item.icon, color: item.iconColor, size: 20),
           ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: 16, top: 8, bottom: isLast ? 8 : 4),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: item.iconColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(item.icon, color: item.iconColor, size: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodyMedium,
+                    children: [
+                      TextSpan(text: item.action, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      TextSpan(text: " ${item.bookTitle}", style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent)),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: "${item.action} ",
-                                style: TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              TextSpan(
-                                text: item.bookTitle,
-                                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
-                              ),
-                            ],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              _formatRelativeTime(item.timestamp),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            if (item.progress > 0) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  "${(item.progress * 100).toInt()}%",
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.accent,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(_formatRelativeTime(item.timestamp), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+                    if (item.progress > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
+                        child: Text("${(item.progress * 100).toInt()}%", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accent)),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
         ],

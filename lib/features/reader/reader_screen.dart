@@ -30,17 +30,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   int _currentPage = 0;
   int _totalPages = 1;
   double _progress = 0.0;
-  bool _showControls = true;
+  bool _showControls = false;
   bool _isFullScreen = false;
 
   double _fontSize = 16.0;
   double _brightness = 1.0;
   double _fontScale = 1.0;
-  ReaderTheme _readerTheme = ReaderTheme.light;
+  ReaderTheme _readerTheme = ReaderTheme.dark;
 
   int _readingSeconds = 0;
   Timer? _timer;
   Timer? _saveTimer;
+  Timer? _hideControlsTimer;
 
   late BookModel _book;
   bool _bookLoaded = false;
@@ -69,6 +70,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     _saveProgress();
     _timer?.cancel();
     _saveTimer?.cancel();
+    _hideControlsTimer?.cancel();
     _tryResetOrientation();
     super.dispose();
   }
@@ -138,6 +140,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     });
     _saveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _saveProgress();
+    });
+  }
+
+  void _scheduleHideControls() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() => _showControls = false);
+      }
     });
   }
 
@@ -352,10 +363,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                       itemBuilder: (_, i) => ListTile(
                         leading: CircleAvatar(
                           radius: 16,
-                          child: Text(
-                            "${i + 1}",
-                            style: const TextStyle(fontSize: 12),
-                          ),
+                          child: Text("${i + 1}", style: const TextStyle(fontSize: 12)),
                         ),
                         title: Text(
                           _epubChapterTitles[i],
@@ -381,10 +389,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                       itemBuilder: (_, i) => ListTile(
                         leading: CircleAvatar(
                           radius: 16,
-                          child: Text(
-                            "${i + 1}",
-                            style: const TextStyle(fontSize: 12),
-                          ),
+                          child: Text("${i + 1}", style: const TextStyle(fontSize: 12)),
                         ),
                         title: Text("Page ${i + 1}"),
                         subtitle: i == _currentPage
@@ -467,18 +472,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                         return ListTile(
                           leading: CircleAvatar(
                             radius: 16,
-                            child: Text(
-                              "${bm.pageIndex + 1}",
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                            child: Text("${bm.pageIndex + 1}", style: const TextStyle(fontSize: 12)),
                           ),
                           title: Text(bm.title),
                           subtitle: bm.note != null && bm.note!.isNotEmpty
-                              ? Text(
-                                  bm.note!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                )
+                              ? Text(bm.note!, maxLines: 1, overflow: TextOverflow.ellipsis)
                               : null,
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, size: 20),
@@ -499,20 +497,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   void _onTapReader(TapUpDetails details) {
-    if (_book.filePath == null || _book.filePath!.isEmpty) {
-      setState(() => _showControls = !_showControls);
-      return;
-    }
-
-    final width = context.size?.width ?? MediaQuery.of(context).size.width;
-    final x = details.localPosition.dx;
-
-    if (x < width / 3) {
-      _goToPage(_currentPage - 1);
-    } else if (x > width * 2 / 3) {
-      _goToPage(_currentPage + 1);
-    } else {
-      setState(() => _showControls = !_showControls);
+    setState(() => _showControls = !_showControls);
+    if (_showControls) {
+      _scheduleHideControls();
     }
   }
 
@@ -556,11 +543,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.menu_book_rounded,
-              size: 80,
-              color: _getHintColor(),
-            ),
+            Icon(Icons.menu_book_rounded, size: 80, color: _getHintColor()),
             const SizedBox(height: 24),
             Text(
               "Page ${_currentPage + 1}",
@@ -693,23 +676,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
         content,
         if (themeOverlay.opacity > 0.01)
           Positioned.fill(
-            child: IgnorePointer(
-              child: Container(color: themeOverlay),
-            ),
+            child: IgnorePointer(child: Container(color: themeOverlay)),
           ),
         if (brightnessOpacity > 0.01)
           Positioned.fill(
-            child: IgnorePointer(
-              child: Container(color: Colors.black.withOpacity(brightnessOpacity)),
-            ),
+            child: IgnorePointer(child: Container(color: Colors.black.withOpacity(brightnessOpacity))),
           ),
-        if (_book.filePath != null && _book.filePath!.isNotEmpty)
-          Positioned.fill(
-            child: GestureDetector(
-              onTapUp: _onTapReader,
-              behavior: HitTestBehavior.translucent,
-            ),
+        Positioned.fill(
+          child: GestureDetector(
+            onTapUp: _onTapReader,
+            behavior: HitTestBehavior.translucent,
           ),
+        ),
       ],
     );
   }
@@ -728,9 +706,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     final secs = duration.inSeconds.remainder(60);
     final timeStr = "${hours > 0 ? "${hours}h " : ""}${minutes}m ${secs.toString().padLeft(2, '0')}s";
     final percent = (_progress * 100).toInt();
-    final theme = Theme.of(context);
     final bgColor = _getBackgroundColor();
     final textColor = _getTextColor();
+    final hintColor = _getHintColor();
 
     return AnnotatedRegion(
       value: _isFullScreen
@@ -743,216 +721,188 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
           : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: bgColor,
-        appBar: _showControls
-            ? AppBar(
-                backgroundColor: bgColor,
-                foregroundColor: textColor,
-                elevation: 0,
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _book.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: textColor),
-                    ),
-                    if (_currentChapterName.isNotEmpty)
-                      Text(
-                        _currentChapterName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _getHintColor(),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-                leading: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () {
-                    _saveProgress();
-                    context.pop();
-                  },
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.list_rounded),
-                    onPressed: _showTableOfContents,
-                    tooltip: "Table of Contents",
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _isCurrentPageBookmarked
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_add_rounded,
-                      color: _isCurrentPageBookmarked
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    onPressed: _isCurrentPageBookmarked
-                        ? () {
-                            final bm = _bookmarks.firstWhere(
-                              (b) => b.pageIndex == _currentPage,
-                              orElse: () => _bookmarks.first,
-                            );
-                            _removeBookmark(bm);
-                          }
-                        : _addBookmark,
-                    tooltip: _isCurrentPageBookmarked
-                        ? "Remove bookmark"
-                        : "Add bookmark",
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_rounded),
-                    onPressed: _showSettingsSheet,
-                    tooltip: "Reading settings",
-                  ),
-                ],
-              )
-            : null,
-        body: Column(
+        body: Stack(
           children: [
-            Expanded(
-              child: Container(
-                color: bgColor,
-                child: _buildReaderContent(),
-              ),
+            Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    color: bgColor,
+                    child: _buildReaderContent(),
+                  ),
+                ),
+              ],
             ),
             if (_showControls)
-              _buildBottomBar(theme, timeStr, percent),
+              AnimatedOpacity(
+                opacity: 1.0,
+                duration: const Duration(milliseconds: 200),
+                child: _buildFloatingControls(bgColor, textColor, hintColor, timeStr, percent),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBottomBar(ThemeData theme, String timeStr, int percent) {
-    final hintColor = _getHintColor();
-    final textColor = _getTextColor();
-
-    return Container(
-      color: _readerTheme == ReaderTheme.dark
-          ? const Color(0xFF16213E)
-          : _readerTheme == ReaderTheme.sepia
-              ? const Color(0xFFE8D5B5)
-              : Colors.grey.shade50,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                Icon(Icons.pages_rounded, size: 14, color: hintColor),
-                const SizedBox(width: 4),
-                Text(
-                  "${_currentPage + 1} / $_totalPages",
-                  style: TextStyle(fontSize: 13, color: textColor),
-                ),
-                const Spacer(),
-                Text(
-                  "$percent%",
-                  style: TextStyle(fontSize: 13, color: hintColor),
-                ),
-                const SizedBox(width: 12),
-                Icon(Icons.timer_outlined, size: 14, color: hintColor),
-                const SizedBox(width: 4),
-                Text(
-                  timeStr,
-                  style: TextStyle(fontSize: 13, color: hintColor),
-                ),
-              ],
+  Widget _buildFloatingControls(Color bgColor, Color textColor, Color hintColor, String timeStr, int percent) {
+    return Column(
+      children: [
+        AnimatedSlide(
+          offset: _showControls ? Offset.zero : const Offset(0, -1),
+          duration: const Duration(milliseconds: 250),
+          child: Container(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  bgColor.withOpacity(0.95),
+                  bgColor.withOpacity(0.0),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: _progress,
-                minHeight: 3,
-                backgroundColor: hintColor.withOpacity(0.2),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () {
+                      _saveProgress();
+                      context.pop();
+                    },
+                    color: textColor,
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_book.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600)),
+                        if (_currentChapterName.isNotEmpty)
+                          Text(_currentChapterName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: hintColor, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildControlButton(
-                  icon: Icons.skip_previous_rounded,
-                  tooltip: "Previous page",
-                  onTap: () => _goToPage(_currentPage - 1),
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: Icons.list_rounded,
-                  tooltip: "Table of Contents",
-                  onTap: _showTableOfContents,
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: _continuousScroll
-                      ? Icons.unfold_more_rounded
-                      : Icons.unfold_less_rounded,
-                  tooltip: _continuousScroll
-                      ? "Single page mode"
-                      : "Continuous scroll",
-                  onTap: () =>
-                      setState(() => _continuousScroll = !_continuousScroll),
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: Icons.bookmarks_rounded,
-                  tooltip: "Bookmarks",
-                  onTap: _showBookmarksSheet,
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: Icons.note_add_rounded,
-                  tooltip: "Add note",
-                  onTap: _showAddNoteDialog,
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: _isFullScreen
-                      ? Icons.fullscreen_exit_rounded
-                      : Icons.fullscreen_rounded,
-                  tooltip: _isFullScreen ? "Exit full screen" : "Full screen",
-                  onTap: _toggleFullScreen,
-                  hintColor: hintColor,
-                ),
-                _buildControlButton(
-                  icon: Icons.skip_next_rounded,
-                  tooltip: "Next page",
-                  onTap: () => _goToPage(_currentPage + 1),
-                  hintColor: hintColor,
-                ),
-              ],
+        ),
+        const Spacer(),
+        AnimatedSlide(
+          offset: _showControls ? Offset.zero : const Offset(0, 1),
+          duration: const Duration(milliseconds: 250),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  bgColor.withOpacity(0.0),
+                  bgColor.withOpacity(0.95),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.pages_rounded, size: 14, color: hintColor),
+                        const SizedBox(width: 4),
+                        Text("${_currentPage + 1} / $_totalPages", style: TextStyle(fontSize: 13, color: textColor)),
+                        const Spacer(),
+                        Text("$percent%", style: TextStyle(fontSize: 13, color: hintColor)),
+                        const SizedBox(width: 12),
+                        Icon(Icons.timer_outlined, size: 14, color: hintColor),
+                        const SizedBox(width: 4),
+                        Text(timeStr, style: TextStyle(fontSize: 13, color: hintColor)),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: AppColors.accent,
+                        inactiveTrackColor: hintColor.withOpacity(0.2),
+                        thumbColor: AppColors.accent,
+                        overlayColor: AppColors.accent.withOpacity(0.12),
+                        trackHeight: 3,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                      ),
+                      child: Slider(
+                        value: (_currentPage / (_totalPages - 1).clamp(1, _totalPages)).clamp(0.0, 1.0),
+                        onChanged: (v) => _goToPage((v * (_totalPages - 1)).round()),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildControlButton(Icons.skip_previous_rounded, "Previous", hintColor, () => _goToPage(_currentPage - 1)),
+                        _buildControlButton(Icons.list_rounded, "Contents", hintColor, _showTableOfContents),
+                        _buildControlButton(
+                          _continuousScroll ? Icons.unfold_more_rounded : Icons.unfold_less_rounded,
+                          "Scroll",
+                          hintColor,
+                          () => setState(() => _continuousScroll = !_continuousScroll),
+                        ),
+                        _buildControlButton(Icons.bookmarks_rounded, "Bookmarks", hintColor, _showBookmarksSheet),
+                        _buildControlButton(Icons.note_add_rounded, "Note", hintColor, _showAddNoteDialog),
+                        _buildControlButton(
+                          _isCurrentPageBookmarked ? Icons.bookmark_rounded : Icons.bookmark_add_rounded,
+                          "Bookmark",
+                          _isCurrentPageBookmarked ? AppColors.accent : hintColor,
+                          _isCurrentPageBookmarked
+                              ? () {
+                                  final bm = _bookmarks.firstWhere(
+                                    (b) => b.pageIndex == _currentPage,
+                                    orElse: () => _bookmarks.first,
+                                  );
+                                  _removeBookmark(bm);
+                                }
+                              : _addBookmark,
+                        ),
+                        _buildControlButton(Icons.settings_rounded, "Settings", hintColor, _showSettingsSheet),
+                        _buildControlButton(
+                          _isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                          "Fullscreen",
+                          hintColor,
+                          _toggleFullScreen,
+                        ),
+                        _buildControlButton(Icons.skip_next_rounded, "Next", hintColor, () => _goToPage(_currentPage + 1)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildControlButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-    required Color hintColor,
-  }) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      onPressed: onTap,
-      tooltip: tooltip,
-      color: hintColor,
-      splashRadius: 20,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      padding: EdgeInsets.zero,
+  Widget _buildControlButton(IconData icon, String tooltip, Color color, VoidCallback onTap) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(icon, size: 20),
+        onPressed: onTap,
+        color: color,
+        splashRadius: 20,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        padding: EdgeInsets.zero,
+      ),
     );
   }
 }

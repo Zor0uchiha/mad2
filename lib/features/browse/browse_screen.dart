@@ -7,83 +7,43 @@ import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/online_book_model.dart";
 
-const _categories = [
-  _CategorySection("Programming & Technology", Icons.code_rounded, Color(0xFF34A853)),
-  _CategorySection("AI & Machine Learning", Icons.auto_awesome_rounded, Color(0xFF7C4DFF)),
-  _CategorySection("Business", Icons.business_rounded, Color(0xFF1A73E8)),
-  _CategorySection("Self Help", Icons.self_improvement_rounded, Color(0xFFFF6D00)),
-  _CategorySection("Fiction", Icons.auto_stories_rounded, Color(0xFFE53935)),
+const _categoryChips = [
+  "Trending", "Popular", "Free",
+  "Programming", "AI", "Fiction",
+  "Business", "Psychology", "Self Help", "Classics",
 ];
 
-class _CategorySection {
-  final String name;
-  final IconData icon;
-  final Color color;
-  const _CategorySection(this.name, this.icon, this.color);
-}
-
-class BrowseScreen extends ConsumerWidget {
+class BrowseScreen extends ConsumerStatefulWidget {
   const BrowseScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Browse"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () => context.push(AppConstants.routeSearch),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => _refresh(ref),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
-          children: [
-            _buildSection(
-              context, ref, "Trending Books",
-              Icons.trending_up_rounded, AppColors.accent,
-              ref.watch(trendingBooksProvider), "trending",
-            ),
-            _buildSection(
-              context, ref, "Popular Books",
-              Icons.local_fire_department_rounded, AppColors.streak,
-              ref.watch(popularBooksProvider), "popular",
-            ),
-            _buildSection(
-              context, ref, "New Releases",
-              Icons.new_releases_rounded, AppColors.reading,
-              ref.watch(newReleasesProvider), "new releases",
-            ),
-            _buildSection(
-              context, ref, "Editor's Picks",
-              Icons.star_rounded, AppColors.rating,
-              ref.watch(editorsPicksProvider), "editor picks",
-            ),
-            _buildSection(
-              context, ref, "Award Winners",
-              Icons.emoji_events_rounded, AppColors.finished,
-              ref.watch(awardWinnersProvider), "award winners",
-            ),
-            _buildSection(
-              context, ref, "Public Domain Books",
-              Icons.public_rounded, const Color(0xFF00BCD4),
-              ref.watch(publicDomainProvider), "public domain",
-            ),
-            for (final cat in _categories)
-              _buildSection(
-                context, ref, cat.name, cat.icon, cat.color,
-                ref.watch(categoryBooksProvider(cat.name)), cat.name,
-              ),
-          ],
-        ),
-      ),
-    );
+  ConsumerState<BrowseScreen> createState() => _BrowseScreenState();
+}
+
+class _BrowseScreenState extends ConsumerState<BrowseScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  String? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _refresh(WidgetRef ref) async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    }
+  }
+
+  Future<void> _refresh() async {
     await Future.wait([
       ref.refresh(trendingBooksProvider.future),
       ref.refresh(popularBooksProvider.future),
@@ -91,14 +51,152 @@ class BrowseScreen extends ConsumerWidget {
       ref.refresh(editorsPicksProvider.future),
       ref.refresh(awardWinnersProvider.future),
       ref.refresh(publicDomainProvider.future),
-      for (final cat in _categories)
-        ref.refresh(categoryBooksProvider(cat.name).future),
     ]);
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Browse"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: () => context.push(AppConstants.routeSettings),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              readOnly: true,
+              onTap: () => context.push(AppConstants.routeSearch),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                hintText: "Search books, authors, genres...",
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: _categoryChips.map((cat) {
+                final isSelected = _selectedCategory == cat;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(cat, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                    selected: isSelected,
+                    selectedColor: AppColors.accent.withOpacity(0.15),
+                    checkmarkColor: AppColors.accent,
+                    onSelected: (v) {
+                      setState(() => _selectedCategory = v ? cat : null);
+                    },
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: _selectedCategory != null
+                  ? _buildCategoryView(theme, _selectedCategory!)
+                  : _buildMainView(theme),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainView(ThemeData theme) {
+    return ListView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 24),
+      children: [
+        _buildSection(
+          "Trending", Icons.trending_up_rounded, AppColors.accent,
+          ref.watch(trendingBooksProvider), "trending",
+        ),
+        _buildSection(
+          "Popular", Icons.local_fire_department_rounded, AppColors.streak,
+          ref.watch(popularBooksProvider), "popular",
+        ),
+        _buildSection(
+          "Free Books", Icons.public_rounded, const Color(0xFF00BCD4),
+          ref.watch(publicDomainProvider), "public domain",
+        ),
+        _buildSection(
+          "New Releases", Icons.new_releases_rounded, AppColors.reading,
+          ref.watch(newReleasesProvider), "new releases",
+        ),
+        _buildSection(
+          "Editor's Picks", Icons.star_rounded, AppColors.rating,
+          ref.watch(editorsPicksProvider), "editor picks",
+        ),
+        _buildSection(
+          "Award Winners", Icons.emoji_events_rounded, AppColors.finished,
+          ref.watch(awardWinnersProvider), "award winners",
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryView(ThemeData theme, String category) {
+    final provider = categoryBooksProvider(category);
+    return ref.watch(provider).when(
+      data: (books) {
+        if (books.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.search_off_rounded, size: 48, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4)),
+                const SizedBox(height: 12),
+                Text("No $category books found", style: theme.textTheme.titleSmall),
+              ],
+            ),
+          );
+        }
+        return GridView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.75,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: books.length,
+          itemBuilder: (_, i) => _BookGridCard(book: books[i]),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text("Error loading books")),
+    );
+  }
+
   Widget _buildSection(
-    BuildContext context,
-    WidgetRef ref,
     String title,
     IconData icon,
     Color color,
@@ -109,7 +207,7 @@ class BrowseScreen extends ConsumerWidget {
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.only(bottom: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -120,9 +218,8 @@ class BrowseScreen extends ConsumerWidget {
                   context.push("${AppConstants.routeSearch}?q=$encoded");
                 },
               ),
-              const SizedBox(height: 8),
               SizedBox(
-                height: 280,
+                height: 240,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -137,14 +234,13 @@ class BrowseScreen extends ConsumerWidget {
         );
       },
       loading: () => Padding(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.only(bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SectionHeader(icon: icon, title: title, color: color),
-            const SizedBox(height: 8),
             SizedBox(
-              height: 280,
+              height: 240,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -178,11 +274,18 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
           Text(
             title,
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -213,68 +316,80 @@ class _BrowseBookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
-      width: 150,
+      width: 140,
       child: GestureDetector(
         onTap: () => context.push("${AppConstants.routeBookDetail}?id=${Uri.encodeQueryComponent(book.id)}&source=${book.source}"),
-        child: Card(
-          color: AppColors.cardDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  color: AppColors.accent.withOpacity(0.08),
-                  child: book.thumbnail != null
-                      ? CachedNetworkImage(
-                          imageUrl: book.thumbnail!,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => _coverPlaceholder(),
-                          errorWidget: (_, __, ___) => _coverPlaceholder(),
-                        )
-                      : _coverPlaceholder(),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-                child: Text(
-                  book.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
-                child: Text(
-                  book.authors.isNotEmpty ? book.authors.join(", ") : "Unknown",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                child: Row(
-                  children: [
-                    if (book.averageRating != null) ...[
-                      Icon(Icons.star_rounded, size: 14, color: AppColors.rating),
-                      const SizedBox(width: 2),
-                      Text(
-                        book.averageRating!.toStringAsFixed(1),
-                        style: theme.textTheme.labelSmall?.copyWith(color: AppColors.rating),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      color: AppColors.accent.withOpacity(0.06),
+                      child: book.thumbnail != null
+                          ? CachedNetworkImage(
+                              imageUrl: book.thumbnail!,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => _coverPlaceholder(),
+                              errorWidget: (_, __, ___) => _coverPlaceholder(),
+                            )
+                          : _coverPlaceholder(),
+                    ),
+                  ),
+                  if (book.isFree || book.isPublicDomain)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.reading,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          "Free",
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                    ],
-                    _SourceBadge(source: book.source),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              book.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.2),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              book.authors.isNotEmpty ? book.authors.join(", ") : "Unknown",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                if (book.averageRating != null) ...[
+                  Icon(Icons.star_rounded, size: 14, color: AppColors.rating),
+                  const SizedBox(width: 2),
+                  Text(
+                    book.averageRating!.toStringAsFixed(1),
+                    style: theme.textTheme.labelSmall?.copyWith(color: AppColors.rating, fontWeight: FontWeight.w600, fontSize: 11),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                _SourceBadge(source: book.source),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -282,7 +397,78 @@ class _BrowseBookCard extends StatelessWidget {
 
   Widget _coverPlaceholder() {
     return Center(
-      child: Icon(Icons.menu_book_rounded, size: 48, color: AppColors.accent.withOpacity(0.3)),
+      child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.2)),
+    );
+  }
+}
+
+class _BookGridCard extends StatelessWidget {
+  final OnlineBookModel book;
+
+  const _BookGridCard({required this.book});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeBookDetail}?id=${Uri.encodeQueryComponent(book.id)}&source=${book.source}"),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    color: AppColors.accent.withOpacity(0.06),
+                    child: book.thumbnail != null
+                        ? CachedNetworkImage(
+                            imageUrl: book.thumbnail!,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => _coverPlaceholder(),
+                            errorWidget: (_, __, ___) => _coverPlaceholder(),
+                          )
+                        : _coverPlaceholder(),
+                  ),
+                ),
+                if (book.isFree || book.isPublicDomain)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.reading, borderRadius: BorderRadius.circular(6)),
+                      child: const Text("Free", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(book.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.2)),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              if (book.averageRating != null) ...[
+                Icon(Icons.star_rounded, size: 12, color: AppColors.rating),
+                const SizedBox(width: 2),
+                Text(book.averageRating!.toStringAsFixed(1), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.rating)),
+                const SizedBox(width: 6),
+              ],
+              _SourceBadge(source: book.source),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _coverPlaceholder() {
+    return Center(
+      child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.2)),
     );
   }
 }
@@ -302,12 +488,12 @@ class _SourceBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.textSecondary.withOpacity(0.15),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -316,38 +502,31 @@ class _SourceBadge extends StatelessWidget {
 class _ShimmerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05);
+    final highlight = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08);
+
     return SizedBox(
-      width: 150,
-      child: Card(
-        color: AppColors.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
+      width: 140,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: base,
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(height: 10, width: 100, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(4))),
-                  const SizedBox(height: 6),
-                  Container(height: 8, width: 80, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(4))),
-                  const SizedBox(height: 6),
-                  Container(height: 8, width: 60, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(4))),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Container(height: 10, width: 100, decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 6),
+          Container(height: 8, width: 80, decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 6),
+          Container(height: 8, width: 60, decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(4))),
+        ],
       ),
     );
   }
