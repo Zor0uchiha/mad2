@@ -78,9 +78,9 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: "${AppConstants.routeBookDetail}/:bookId",
+      path: AppConstants.routeBookDetail,
       builder: (context, state) {
-        final bookId = state.pathParameters['bookId'] ?? '';
+        final bookId = state.uri.queryParameters['id'] ?? '';
         final source = state.uri.queryParameters['source'] ?? '';
         return BookDetailScreen(bookId: bookId, source: source);
       },

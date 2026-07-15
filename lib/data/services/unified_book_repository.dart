@@ -49,6 +49,9 @@ class UnifiedBookRepository {
         case 'google_books':
           book = await googleBooks.getBookById(id);
           break;
+        case 'open_library':
+          book = await openLibrary.getBookById(id);
+          break;
         case 'gutendex':
           final numId = int.tryParse(id.replaceAll('gutendex_', ''));
           if (numId != null) book = await gutendex.getBookById(numId);

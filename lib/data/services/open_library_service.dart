@@ -47,4 +47,47 @@ class OpenLibraryService {
     results.sort((a, b) => (b.downloadCount ?? 0).compareTo(a.downloadCount ?? 0));
     return results.take(limit).toList();
   }
+
+  Future<OnlineBookModel?> getBookById(String id) async {
+    try {
+      final cleanId = id.replaceAll('/works/', '').replaceAll('/books/', '').replaceAll('/workd/', '');
+      final uri = Uri.parse('${AppConstants.openLibraryApiUrl}/works/$cleanId.json');
+      final response =
+          await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return null;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      return OnlineBookModel(
+        id: id,
+        source: 'open_library',
+        title: data['title'] as String? ?? 'Unknown Title',
+        authors: (data['authors'] as List<dynamic>?)
+                ?.map((a) => (a as Map<String, dynamic>)['author']?['key'] as String? ?? 'Unknown')
+                .toList() ??
+            [],
+        description: _extractDescription(data),
+        thumbnail: 'https://covers.openlibrary.org/b/olid/$cleanId-M.jpg',
+        pageCount: data['number_of_pages'] as int?,
+        publishedDate: data['first_publish_date'] as String?,
+        categories: (data['subjects'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        language: data['language'] as String?,
+        isPublicDomain: true,
+        isFree: true,
+        borrowLink: 'https://openlibrary.org/works/$cleanId/borrow',
+        readOnlineLink: 'https://openlibrary.org/works/$cleanId',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _extractDescription(Map<String, dynamic> data) {
+    final desc = data['description'];
+    if (desc is String) return desc;
+    if (desc is Map<String, dynamic>) return desc['value'] as String?;
+    return null;
+  }
 }

@@ -215,7 +215,7 @@ class _BrowseBookCard extends StatelessWidget {
     return SizedBox(
       width: 150,
       child: GestureDetector(
-        onTap: () => context.push("${AppConstants.routeBookDetail}/${book.id}?source=${book.source}"),
+        onTap: () => context.push("${AppConstants.routeBookDetail}?id=${Uri.encodeQueryComponent(book.id)}&source=${book.source}"),
         child: Card(
           color: AppColors.cardDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

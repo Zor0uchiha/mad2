@@ -317,7 +317,7 @@ class _SearchResultTile extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push("${AppConstants.routeBookDetail}/${book.id}?source=${book.source}"),
+        onTap: () => context.push("${AppConstants.routeBookDetail}?id=${Uri.encodeQueryComponent(book.id)}&source=${book.source}"),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
