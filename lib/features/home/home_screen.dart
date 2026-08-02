@@ -300,7 +300,7 @@ class HomeScreen extends ConsumerWidget {
                   onSeeAll: () => context.push(AppConstants.routeBookmarks),
                 ),
                 const SizedBox(height: 12),
-                _BookmarksSection(
+                _BookmarkSection(
                   bookmarks: bookmarks.take(5).toList(),
                   onOpen: (b) =>
                       context.push("${AppConstants.routeReader}/${b.bookId}"),
