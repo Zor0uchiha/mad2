@@ -14,6 +14,7 @@ import "../../data/models/collection_model.dart";
 import "../../data/services/share_service.dart";
 import "../../data/services/import_service.dart";
 import "../../shared/widgets/generated_cover.dart";
+import "pdf_cover_picker.dart";
 
 enum LibrarySort {
   titleAsc("Title A-Z"),
@@ -234,6 +235,52 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     _loadBooks();
   }
 
+  Future<void> _setPdfCover(BookModel book) async {
+    final filePath = book.filePath;
+    if (filePath == null || filePath.isEmpty) {
+      _showSnack("This PDF has no local file to read pages from.");
+      return;
+    }
+    final page = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => PdfCoverPagePicker(filePath: filePath),
+    );
+    if (page == null) return;
+
+    try {
+      final bytes = await renderPdfPageAsPng(filePath, page, 360);
+      if (bytes == null) {
+        _showSnack("Could not render page $page of the PDF.");
+        return;
+      }
+      final appDir = await getApplicationDocumentsDirectory();
+      final coversDir = Directory("${appDir.path}/libora_covers");
+      if (!await coversDir.exists()) {
+        await coversDir.create(recursive: true);
+      }
+      final dest = File("${coversDir.path}/${book.id}.png");
+      await dest.writeAsBytes(bytes, flush: true);
+
+      await ref.read(bookRepositoryProvider).updateBook(
+        book.copyWith(coverPath: dest.path),
+      );
+      ref.invalidate(allBooksProvider);
+      _showSnack("Cover set from page $page of \"${book.title}\"");
+      _loadBooks();
+    } catch (_) {
+      _showSnack("Could not set the cover from the PDF.");
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _setCover(BookModel book) async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -314,6 +361,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 _setCover(book);
               },
             ),
+            if (book.format == BookFormat.pdf)
+              ListTile(
+                leading: const Icon(Icons.auto_stories_rounded),
+                title: const Text("Set Cover from a PDF page"),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _setPdfCover(book);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.collections_bookmark),
               title: const Text("Add/Remove from Collections"),
