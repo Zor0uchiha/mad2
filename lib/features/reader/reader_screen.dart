@@ -21,6 +21,7 @@ import "epub/epub_parser.dart";
 import "epub/epub_reader_view.dart";
 import "highlights/highlight_model.dart";
 import "widgets/ai_tools.dart";
+import "widgets/reader_selection_toolbar.dart";
 import "widgets/reader_tools_sheet.dart";
 import "widgets/reader_style_sheet.dart";
 import "widgets/pdf_quote_editor.dart";
@@ -807,7 +808,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SelectableText(text, maxLines: 3, overflow: TextOverflow.ellipsis),
+            SelectableText(text, maxLines: 3),
             const SizedBox(height: 12),
             TextField(
               controller: controller,

@@ -279,7 +279,7 @@ class EpubParser {
     if (uri == null) return null;
     if (uri.scheme == 'data') return null;
     if (uri.hasScheme) return null;
-    final resolvedPath = Uri.parse(chapterHref).resolve(uri).path;
+    final resolvedPath = Uri.parse(chapterHref).resolve(uri.toString()).path;
     return files[_normalizePath(resolvedPath)];
   }
 

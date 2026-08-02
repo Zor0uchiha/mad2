@@ -81,7 +81,7 @@ print(f"Detected: app={app_gradle} root={root_gradle} settings={settings_gradle}
 if app_gradle:
     if is_kts:
         patch_file(app_gradle, [
-            (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 35'),
+            (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36'),
             (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23'),
             (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),
             (r'applicationId\s*=\s*"?flutter\.applicationId"?', 'applicationId = "com.example.libora"'),
@@ -90,8 +90,8 @@ if app_gradle:
         ])
     else:
         patch_file(app_gradle, [
-            (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 35'),
-            (r'compileSdk\s+\d+', 'compileSdk = 35'),
+            (r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36'),
+            (r'compileSdk\s+\d+', 'compileSdk = 36'),
             (r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23'),
             (r'minSdkVersion\s+\d+', 'minSdkVersion 23'),
             (r'ndkVersion\s*=\s*flutter\.ndkVersion', 'ndkVersion = "27.0.12077973"'),

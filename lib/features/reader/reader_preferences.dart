@@ -207,7 +207,7 @@ class ReaderPreferences {
       case ReaderFontId.monospace:
         return const TextStyle(fontFamily: 'monospace');
       case ReaderFontId.dyslexic:
-        return GoogleFonts.openDyslexic();
+        return GoogleFonts.comicNeue();
     }
   }
 }

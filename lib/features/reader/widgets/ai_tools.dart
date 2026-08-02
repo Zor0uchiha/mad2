@@ -54,7 +54,7 @@ class ReaderAiTools {
         final part = m['partOfSpeech'] ?? '';
         final defs = (m['definitions'] as List? ?? []);
         buf.writeln();
-        buf.writeln('_$part_');
+        buf.writeln('_${part}_');
         var count = 0;
         for (final d in defs) {
           if (count >= 3) break;
@@ -147,7 +147,7 @@ class ReaderAiTools {
         freq[key] = (freq[key] ?? 0) + 1;
       }
     }
-    String score(String s) {
+    double score(String s) {
       var total = 0;
       for (final w in s.split(RegExp(r'\s+'))) {
         final key = w.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');

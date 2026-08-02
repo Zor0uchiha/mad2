@@ -46,6 +46,7 @@ class EpubReaderViewState extends State<EpubReaderView> {
   int _page = 0;
   int _anchorBlock = 0;
   bool _initialJumpDone = false;
+  String _selectionText = '';
 
   int get currentPage => _page;
   int get pageCount => _pages.isEmpty ? 1 : _pages.length;
@@ -172,6 +173,7 @@ class EpubReaderViewState extends State<EpubReaderView> {
     }
     return SelectionArea(
       contextMenuBuilder: _selectionMenu,
+      onSelectionChanged: _onSelectionChanged,
       child: SingleChildScrollView(
         controller: _scrollController,
         padding: EdgeInsets.fromLTRB(
@@ -290,6 +292,7 @@ class EpubReaderViewState extends State<EpubReaderView> {
         final blocks = _pages[page];
         return SelectionArea(
           contextMenuBuilder: _selectionMenu,
+          onSelectionChanged: _onSelectionChanged,
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               widget.prefs.margin,
@@ -314,16 +317,19 @@ class EpubReaderViewState extends State<EpubReaderView> {
   }
 
   Widget _selectionMenu(BuildContext context, SelectableRegionState state) {
-    final content = state.getSelectedContent();
-    final text = content?.plainText.trim() ?? '';
+    final text = _selectionText.trim();
     if (text.isEmpty) return const SizedBox.shrink();
     return ReaderSelectionToolbar(
       text: text,
       onAction: (action, t) {
-        state.clearSelection();
+        state.hideToolbar();
         widget.onSelection?.call(action, t);
       },
     );
+  }
+
+  void _onSelectionChanged(SelectedContent? content) {
+    _selectionText = content?.plainText ?? '';
   }
 
   Widget _buildBlock(EpubBlock block) {

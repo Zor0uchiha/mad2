@@ -196,7 +196,7 @@ class _HighlightTile extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        highlight.note,
+                        highlight.note!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
