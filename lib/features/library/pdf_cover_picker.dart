@@ -58,8 +58,8 @@ class _PdfCoverPagePickerState extends State<PdfCoverPagePicker> {
       fullWidth: fullWidth,
       fullHeight: fullHeight,
     );
-    await image.createImageIfNotAvailable();
-    final data = await image.imageIfAvailable!.toByteData(
+    final uiImage = await image.createImageIfNotAvailable();
+    final data = await uiImage.toByteData(
       format: ui.ImageByteFormat.png,
     );
     return data!.buffer.asUint8List();
@@ -203,8 +203,8 @@ Future<Uint8List?> renderPdfPageAsPng(
         fullWidth: fullWidth,
         fullHeight: fullHeight,
       );
-      await image.createImageIfNotAvailable();
-      final data = await image.imageIfNotAvailable!.toByteData(
+      final uiImage = await image.createImageIfNotAvailable();
+      final data = await uiImage.toByteData(
         format: ui.ImageByteFormat.png,
       );
       return data!.buffer.asUint8List();
