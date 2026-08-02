@@ -648,6 +648,24 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     );
   }
 
+  bool _isValidPdfFile(String? path) {
+    if (path == null || path.isEmpty) return false;
+    try {
+      final file = File(path);
+      if (!file.existsSync()) return false;
+      final raf = file.openSync();
+      final bytes = raf.readSync(4);
+      raf.closeSync();
+      return bytes.length >= 4 &&
+          bytes[0] == 0x25 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x44 &&
+          bytes[3] == 0x46;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<EpubBook> _loadEpubBook() async {
     final file = File(_book.filePath!);
     final bytes = await file.readAsBytes();
@@ -696,7 +714,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     } else {
       switch (_book.format) {
         case BookFormat.pdf:
-          content = _buildPdfView();
+          content = _isValidPdfFile(_book.filePath)
+              ? _buildPdfView()
+              : _buildFallbackContent();
         case BookFormat.epub:
           content = _buildEpubView();
       }

@@ -445,6 +445,14 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     }
   }
 
+  bool _looksLikeHtml(List<int> data) {
+    final prefix = data.length > 512 ? data.sublist(0, 512) : data;
+    final sample = String.fromCharCodes(prefix).trimLeft().toLowerCase();
+    return sample.startsWith("<") ||
+        sample.startsWith("<!doctype") ||
+        sample.contains("<html");
+  }
+
   Future<BookModel?> _downloadBook(OnlineBookModel book, dynamic repo) async {
     final candidates = [
       book.epubDownloadLink,
@@ -462,11 +470,21 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
         final resp = await client.get(uri).timeout(const Duration(seconds: 45));
         client.close();
         if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
-          bytes = resp.bodyBytes;
-          usedExt = link.toLowerCase().endsWith('.epub')
-              ? '.epub'
-              : '.pdf';
-          break;
+          final data = resp.bodyBytes;
+          final isPdf = data.length >= 4 &&
+              data[0] == 0x25 &&
+              data[1] == 0x50 &&
+              data[2] == 0x44 &&
+              data[3] == 0x46;
+          final isEpub = data.length >= 2 &&
+              data[0] == 0x50 &&
+              data[1] == 0x4B;
+          final isHtml = _looksLikeHtml(data);
+          if ((isPdf || isEpub) && !isHtml) {
+            bytes = data;
+            usedExt = isPdf ? ".pdf" : ".epub";
+            break;
+          }
         }
       } catch (_) {}
     }
