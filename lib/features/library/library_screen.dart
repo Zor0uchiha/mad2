@@ -3,6 +3,8 @@ import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
+import "package:image_picker/image_picker.dart";
+import "package:path_provider/path_provider.dart";
 import "../../core/providers.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/theme/app_theme.dart";
@@ -231,6 +233,43 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     _loadBooks();
   }
 
+  Future<void> _setCover(BookModel book) async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1400,
+      maxHeight: 2000,
+      imageQuality: 90,
+    );
+    if (picked == null) return;
+
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final coversDir = Directory("${appDir.path}/libora_covers");
+      if (!await coversDir.exists()) {
+        await coversDir.create(recursive: true);
+      }
+      final dest = File("${coversDir.path}/${book.id}.jpg");
+      await File(picked.path).copy(dest.path);
+
+      final updated = book.copyWith(coverPath: dest.path);
+      await ref.read(bookRepositoryProvider).updateBook(updated);
+      ref.invalidate(allBooksProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cover updated for "${book.title}"')),
+        );
+      }
+      _loadBooks();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not update the cover")),
+        );
+      }
+    }
+  }
+
   void _showBookActions(BookModel book) {
     showModalBottomSheet(
       context: context,
@@ -264,6 +303,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               onTap: () {
                 Navigator.pop(ctx);
                 _showEditDialog(book);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_rounded),
+              title: const Text("Change Cover"),
+              onTap: () {
+                Navigator.pop(ctx);
+                _setCover(book);
               },
             ),
             ListTile(
