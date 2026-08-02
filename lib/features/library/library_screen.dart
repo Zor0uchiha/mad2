@@ -13,6 +13,7 @@ import "../../data/models/book_model.dart";
 import "../../data/models/collection_model.dart";
 import "../../data/services/share_service.dart";
 import "../../data/services/import_service.dart";
+import "../../shared/widgets/generated_cover.dart";
 
 enum LibrarySort {
   titleAsc("Title A-Z"),
@@ -945,10 +946,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   child: Container(
                     width: 130,
                     height: 180,
-                    color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.08),
+                    color: hasCover ? Colors.transparent : Colors.transparent,
                     child: hasCover
-                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _coverPlaceholder())
-                        : _coverPlaceholder(),
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => GeneratedCover(title: book.title, author: book.author, fontSize: 11))
+                        : GeneratedCover(title: book.title, author: book.author, fontSize: 11),
                   ),
                 ),
                 if (status != null)
@@ -1083,10 +1084,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.08),
-                child: hasCover
-                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _coverPlaceholder())
-                    : _coverPlaceholder(),
+color: hasCover ? Colors.transparent : Colors.transparent,
+                    child: hasCover
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => GeneratedCover(title: book.title, author: book.author, fontSize: 11))
+                        : GeneratedCover(title: book.title, author: book.author, fontSize: 11),
               ),
             ),
           ),
@@ -1222,8 +1223,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     width: double.infinity,
                     color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
                     child: hasCover
-                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3))))
-                        : Center(child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3))),
+                        ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => GeneratedCover(title: book.title, author: book.author))
+                        : GeneratedCover(title: book.title, author: book.author),
                   ),
                 ),
                 if (book.isFavorite)
@@ -1312,8 +1313,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   height: 72,
                   color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
                   child: hasCover
-                      ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 28, color: AppColors.accent.withOpacity(0.3)))
-                      : Icon(Icons.menu_book_rounded, size: 28, color: AppColors.accent.withOpacity(0.3)),
+                      ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => GeneratedCover(title: book.title, fontSize: 9))
+                      : GeneratedCover(title: book.title, fontSize: 9),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1377,8 +1378,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 height: 48,
                 color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.06),
                 child: hasCover
-                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.menu_book_rounded, size: 18, color: AppColors.accent.withOpacity(0.3)))
-                    : Icon(Icons.menu_book_rounded, size: 18, color: AppColors.accent.withOpacity(0.3)),
+                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => GeneratedCover(title: book.title, fontSize: 7))
+                    : GeneratedCover(title: book.title, fontSize: 7),
               ),
             ),
             const SizedBox(width: 12),
@@ -1402,12 +1403,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _coverPlaceholder() {
-    return Center(
-      child: Icon(Icons.menu_book_rounded, size: 32, color: AppColors.accent.withOpacity(0.3)),
     );
   }
 }

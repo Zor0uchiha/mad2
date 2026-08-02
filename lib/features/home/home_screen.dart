@@ -9,6 +9,7 @@ import "../../core/providers.dart";
 import "../../core/constants/app_constants.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/models/book_model.dart";
+import "../../data/models/bookmark_model.dart";
 import "../../data/models/reading_goal_model.dart";
 import "../../data/services/storage_service.dart";
 import "../../data/services/import_service.dart";
@@ -143,6 +144,7 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(localUserProvider).asData?.value;
     final userName = user?.displayName ?? "Reader";
     final quote = ref.watch(dailyQuoteProvider).value ?? _localQuote();
+    final bookmarks = ref.watch(allBookmarksProvider).asData?.value ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -288,6 +290,20 @@ class HomeScreen extends ConsumerWidget {
                       );
                     },
                   ),
+                ),
+              ],
+              if (bookmarks.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  title: "My Bookmarks",
+                  showSeeAll: true,
+                  onSeeAll: () => context.push(AppConstants.routeBookmarks),
+                ),
+                const SizedBox(height: 12),
+                _BookmarksSection(
+                  bookmarks: bookmarks.take(5).toList(),
+                  onOpen: (b) =>
+                      context.push("${AppConstants.routeReader}/${b.bookId}"),
                 ),
               ],
               if (allBooks.isEmpty) ...[
@@ -834,6 +850,80 @@ class _RecommendationCard extends StatelessWidget {
   Widget _coverPlaceholder() {
     return Center(
       child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3)),
+    );
+  }
+}
+
+class _BookmarkSection extends StatelessWidget {
+  final List<BookmarkModel> bookmarks;
+  final void Function(BookmarkModel) onOpen;
+
+  const _BookmarkSection({required this.bookmarks, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+
+    return Column(
+      children: [
+        for (final bm in bookmarks) ...[
+          GestureDetector(
+            onTap: () => onOpen(bm),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.bookmark_rounded, color: AppColors.accent, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          bm.note != null && bm.note!.isNotEmpty ? bm.note! : bm.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontStyle: bm.note != null && bm.note!.isNotEmpty
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${bm.bookTitle} · ${bm.title}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
