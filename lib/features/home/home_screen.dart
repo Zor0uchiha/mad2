@@ -1,5 +1,7 @@
+import "dart:convert";
 import "dart:io";
 import "package:flutter/material.dart";
+import "package:http/http.dart" as http;
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:hive_flutter/hive_flutter.dart";
@@ -54,6 +56,29 @@ String _dailyQuote() {
   final index = (now.month * 31 + now.day) % _dailyQuotes.length;
   return _dailyQuotes[index];
 }
+
+MapEntry<String, String> _localQuote() {
+  final now = DateTime.now();
+  final index = (now.month * 31 + now.day) % _dailyQuotes.length;
+  return MapEntry<String, String>(_dailyQuotes[index], "");
+}
+
+final dailyQuoteProvider = FutureProvider.autoDispose<MapEntry<String, String>>((ref) async {
+  try {
+    final resp = await http
+        .get(Uri.parse("https://api.quotable.io/quotes/random"))
+        .timeout(const Duration(seconds: 8));
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      final content = data["content"] as String?;
+      if (content != null && content.trim().isNotEmpty) {
+        final author = data["author"] as String?;
+        return MapEntry(content.trim(), author ?? "");
+      }
+    }
+  } catch (_) {}
+  return _localQuote();
+});
 
 String _greeting() {
   final hour = DateTime.now().hour;
@@ -117,6 +142,7 @@ class HomeScreen extends ConsumerWidget {
     final streak = ref.watch(streakProvider).asData?.value ?? 0;
     final user = ref.watch(localUserProvider).asData?.value;
     final userName = user?.displayName ?? "Reader";
+    final quote = ref.watch(dailyQuoteProvider).value ?? _localQuote();
 
     return Scaffold(
       appBar: AppBar(
@@ -152,7 +178,8 @@ class HomeScreen extends ConsumerWidget {
                 userName: userName,
                 streak: streak,
                 readingGoal: readingGoal.asData?.value,
-                quote: _dailyQuote(),
+                quote: quote.key,
+                quoteAuthor: quote.value,
               ),
               const SizedBox(height: 24),
               if (continueReadingBooks.isNotEmpty) ...[
@@ -320,6 +347,7 @@ class _GreetingHeroCard extends StatelessWidget {
   final int streak;
   final ReadingGoalModel? readingGoal;
   final String quote;
+  final String quoteAuthor;
 
   const _GreetingHeroCard({
     required this.greeting,
@@ -327,6 +355,7 @@ class _GreetingHeroCard extends StatelessWidget {
     required this.streak,
     this.readingGoal,
     required this.quote,
+    this.quoteAuthor = "",
   });
 
   @override
@@ -453,6 +482,19 @@ class _GreetingHeroCard extends StatelessWidget {
               ],
             ),
           ),
+          if (quoteAuthor.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                "— $quoteAuthor",
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -669,7 +711,7 @@ class _RecommendationCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
     final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
-    final genre = book.tags.isNotEmpty ? book.tags.first : "General";
+    final genre = book.tags.isNotEmpty ? book.tags.first : null;
 
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
@@ -732,36 +774,27 @@ class _RecommendationCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.star_rounded, size: 14, color: AppColors.rating),
-                        const SizedBox(width: 2),
-                        Text(
-                          "4.5",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.rating,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            genre,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.accent,
+                    if (genre != null) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              genre,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.accent,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       book.description ?? "No description available.",

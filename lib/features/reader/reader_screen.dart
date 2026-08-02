@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
+import "package:share_plus/share_plus.dart";
 import "package:flutter_pdfview/flutter_pdfview.dart";
 import "package:epub_view/epub_view.dart";
 import "../../core/constants/app_constants.dart";
@@ -298,6 +299,43 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       }
     }
     controller.dispose();
+  }
+
+  Future<void> _shareQuote() async {
+    final controller = TextEditingController();
+    final quote = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Share a favourite line"),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          maxLength: 500,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "Write your favourite line or quote from this book...",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text("Share"),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (quote != null && quote.isNotEmpty) {
+      final text =
+          "${_book.title}\nby ${_book.author}\n\n“$quote”\n\n— Shared from Libora 📚";
+      await Share.share(text);
+    }
   }
 
   void _toggleFullScreen() {
@@ -852,12 +890,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                       children: [
                         _buildControlButton(Icons.skip_previous_rounded, "Previous", hintColor, () => _goToPage(_currentPage - 1)),
                         _buildControlButton(Icons.list_rounded, "Contents", hintColor, _showTableOfContents),
-                        _buildControlButton(
-                          _continuousScroll ? Icons.unfold_more_rounded : Icons.unfold_less_rounded,
-                          "Scroll",
-                          hintColor,
-                          () => setState(() => _continuousScroll = !_continuousScroll),
-                        ),
                         _buildControlButton(Icons.bookmarks_rounded, "Bookmarks", hintColor, _showBookmarksSheet),
                         _buildControlButton(Icons.note_add_rounded, "Note", hintColor, _showAddNoteDialog),
                         _buildControlButton(
@@ -875,6 +907,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                               : _addBookmark,
                         ),
                         _buildControlButton(Icons.settings_rounded, "Settings", hintColor, _showSettingsSheet),
+                        _buildControlButton(Icons.share_rounded, "Share Quote", hintColor, _shareQuote),
                         _buildControlButton(
                           _isFullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
                           "Fullscreen",

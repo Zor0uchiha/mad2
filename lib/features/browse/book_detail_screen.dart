@@ -1,7 +1,10 @@
+import "dart:io";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:cached_network_image/cached_network_image.dart";
+import "package:http/http.dart" as http;
+import "package:path_provider/path_provider.dart";
 import "package:share_plus/share_plus.dart" as share_plus;
 import "package:url_launcher/url_launcher.dart" as url_launcher;
 import "package:file_picker/file_picker.dart";
@@ -399,7 +402,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     final repo = ref.read(booksProvider);
     final allBooks = await repo.getAllBooks();
     final existing = allBooks.where((b) =>
-        b.title.toLowerCase() == book.title.toLowerCase()).toList();
+        b.title.toLowerCase().trim() == book.title.toLowerCase().trim()).toList();
     if (existing.isNotEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -408,25 +411,93 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       }
       return;
     }
-    final newBook = BookModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: book.title,
-      author: book.authors.isNotEmpty ? book.authors.join(", ") : "Unknown",
-      coverPath: book.thumbnail,
-      description: book.description,
-      format: BookFormat.pdf,
-      pageCount: book.pageCount ?? 0,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      tags: List.from(book.categories),
-      onlineBookId: book.id,
+
+    if (!context.mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(child: Text("Downloading ebook...")),
+          ],
+        ),
+      ),
     );
-    await repo.addBook(newBook);
+
+    final downloaded = await _downloadBook(book, repo);
+
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
     if (context.mounted) {
       ref.invalidate(allBooksProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Imported ${book.title} to library")),
+      if (downloaded != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Downloaded ${book.title} to your library")),
+        );
+        context.push("${AppConstants.routeReader}/${downloaded.id}");
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Added ${book.title} to your library")),
+        );
+      }
+    }
+  }
+
+  Future<BookModel?> _downloadBook(OnlineBookModel book, dynamic repo) async {
+    final candidates = [
+      book.epubDownloadLink,
+      book.pdfDownloadLink,
+      book.downloadLink,
+    ];
+    List<int>? bytes;
+    String? usedExt;
+    for (final link in candidates) {
+      if (link == null) continue;
+      final uri = Uri.tryParse(link);
+      if (uri == null) continue;
+      try {
+        final client = http.Client();
+        final resp = await client.get(uri).timeout(const Duration(seconds: 45));
+        client.close();
+        if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
+          bytes = resp.bodyBytes;
+          usedExt = link.toLowerCase().endsWith('.epub')
+              ? '.epub'
+              : '.pdf';
+          break;
+        }
+      } catch (_) {}
+    }
+    if (bytes == null || usedExt == null) return null;
+
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final booksDir = Directory("${appDir.path}/libora_books");
+      if (!await booksDir.exists()) await booksDir.create(recursive: true);
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final file = File("${booksDir.path}/$id$usedExt");
+      await file.writeAsBytes(bytes, flush: true);
+
+      final model = BookModel(
+        id: id,
+        title: book.title,
+        author: book.authors.isNotEmpty ? book.authors.join(", ") : "Unknown",
+        coverPath: book.thumbnail,
+        description: book.description,
+        filePath: file.path,
+        format: usedExt == '.epub' ? BookFormat.epub : BookFormat.pdf,
+        pageCount: book.pageCount ?? 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        tags: List.from(book.categories),
+        onlineBookId: book.id,
       );
+      await repo.addBook(model);
+      return model;
+    } catch (_) {
+      return null;
     }
   }
 

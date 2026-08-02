@@ -42,5 +42,7 @@ final searchResultsProvider = FutureProvider.family<List<OnlineBookModel>, Strin
 final bookDetailProvider = FutureProvider.family<OnlineBookModel?, String>((ref, combined) async {
   final parts = combined.split('|');
   if (parts.length != 2) return null;
-  return ref.read(unifiedBookRepositoryProvider).getBookDetail(parts[0], parts[1]);
+  // Key format is "source|id", so parts[0] = source and parts[1] = id.
+  // Repository signature is getBookDetail(String id, String source).
+  return ref.read(unifiedBookRepositoryProvider).getBookDetail(parts[1], parts[0]);
 });
