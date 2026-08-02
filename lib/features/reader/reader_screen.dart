@@ -179,6 +179,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     );
     await bookRepo.updateBook(updatedBook);
     _book = updatedBook;
+    ref.invalidate(allBooksProvider);
 
     if (_readingSeconds >= 60) {
       await ref.read(userRepositoryProvider).updateReadingStreak();
