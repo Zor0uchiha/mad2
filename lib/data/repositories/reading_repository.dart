@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/bookmark_model.dart';
 import '../models/note_model.dart';
+import '../models/quote_model.dart';
 import '../models/reading_progress_model.dart';
 
 class ReadingProgressRepository {
@@ -115,5 +116,50 @@ class NoteRepository {
   Future<List<NoteModel>> getAllNotes() async {
     final box = await _boxAsync;
     return box.values.toList();
+  }
+}
+
+class QuoteRepository {
+  Box<QuoteModel>? _box;
+
+  Future<Box<QuoteModel>> get _boxAsync async {
+    _box ??= await Hive.openBox<QuoteModel>(AppConstants.hiveBoxQuotes);
+    return _box!;
+  }
+
+  Future<void> saveQuote(QuoteModel quote) async {
+    final box = await _boxAsync;
+    if (quote.id.isEmpty) {
+      quote.id = DateTime.now().millisecondsSinceEpoch.toString();
+    }
+    await box.put(quote.id, quote);
+  }
+
+  Future<void> deleteQuote(String id) async {
+    final box = await _boxAsync;
+    await box.delete(id);
+  }
+
+  Future<List<QuoteModel>> getQuotesForBook(String bookId) async {
+    final box = await _boxAsync;
+    final list = box.values.where((q) => q.bookId == bookId).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<List<QuoteModel>> getQuotesForPage(String bookId, int pageIndex) async {
+    final box = await _boxAsync;
+    final list = box.values
+        .where((q) => q.bookId == bookId && q.pageIndex == pageIndex)
+        .toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<List<QuoteModel>> getAllQuotes() async {
+    final box = await _boxAsync;
+    final list = box.values.toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 }

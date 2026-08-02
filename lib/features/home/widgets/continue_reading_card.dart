@@ -7,8 +7,9 @@ import "../../../data/models/book_model.dart";
 
 class ContinueReadingCard extends StatelessWidget {
   final BookModel book;
+  final VoidCallback? onLongPress;
 
-  const ContinueReadingCard({super.key, required this.book});
+  const ContinueReadingCard({super.key, required this.book, this.onLongPress});
 
   String _timeRemaining() {
     final remaining = book.pageCount - book.currentPage;
@@ -39,6 +40,7 @@ class ContinueReadingCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: onLongPress,
       child: Container(
         width: 170,
         decoration: BoxDecoration(

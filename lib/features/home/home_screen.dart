@@ -11,9 +11,11 @@ import "../../core/theme/app_colors.dart";
 import "../../data/models/book_model.dart";
 import "../../data/models/bookmark_model.dart";
 import "../../data/models/reading_goal_model.dart";
+import "../../data/models/quote_model.dart";
 import "../../data/services/storage_service.dart";
 import "../../data/services/import_service.dart";
 import "../../data/repositories/local_repositories.dart";
+import "../library/book_actions_sheet.dart";
 import "widgets/continue_reading_card.dart";
 
 final readingGoalProvider = FutureProvider<ReadingGoalModel?>((ref) async {
@@ -145,6 +147,7 @@ class HomeScreen extends ConsumerWidget {
     final userName = user?.displayName ?? "Reader";
     final quote = ref.watch(dailyQuoteProvider).value ?? _localQuote();
     final bookmarks = ref.watch(allBookmarksProvider).asData?.value ?? [];
+    final savedQuotes = ref.watch(allQuotesProvider).asData?.value ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -195,7 +198,14 @@ class HomeScreen extends ConsumerWidget {
                     padding: EdgeInsets.zero,
                     itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(right: 16),
-                      child: ContinueReadingCard(book: continueReadingBooks[index]),
+                      child: ContinueReadingCard(
+                        book: continueReadingBooks[index],
+                        onLongPress: () => showBookActionsSheet(
+                          context,
+                          ref,
+                          continueReadingBooks[index],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -258,7 +268,14 @@ class HomeScreen extends ConsumerWidget {
                     padding: EdgeInsets.zero,
                     itemBuilder: (context, index) => Padding(
                       padding: const EdgeInsets.only(right: 16),
-                      child: _SmallBookCoverCard(book: recentlyAdded[index]),
+                      child: _SmallBookCoverCard(
+                        book: recentlyAdded[index],
+                        onLongPress: () => showBookActionsSheet(
+                          context,
+                          ref,
+                          recentlyAdded[index],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -279,6 +296,7 @@ class HomeScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(right: 16),
                         child: _RecommendationCard(
                           book: book,
+                          onLongPress: () => showBookActionsSheet(context, ref, book),
                           onSave: () async {
                             final repo = ref.read(bookRepositoryProvider);
                             final updated = book.copyWith(isFavorite: !book.isFavorite);
@@ -305,6 +323,16 @@ class HomeScreen extends ConsumerWidget {
                   onOpen: (b) =>
                       context.push("${AppConstants.routeReader}/${b.bookId}"),
                 ),
+              ],
+              if (savedQuotes.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                _SectionHeader(
+                  title: "My Saved Lines & Quotes",
+                  showSeeAll: true,
+                  onSeeAll: () => context.push(AppConstants.routeQuotes),
+                ),
+                const SizedBox(height: 12),
+                _QuoteSection(quotes: savedQuotes.take(5).toList()),
               ],
               if (allBooks.isEmpty) ...[
                 const SizedBox(height: 16),
@@ -620,8 +648,9 @@ class _SectionHeader extends StatelessWidget {
 
 class _SmallBookCoverCard extends StatelessWidget {
   final BookModel book;
+  final VoidCallback? onLongPress;
 
-  const _SmallBookCoverCard({required this.book});
+  const _SmallBookCoverCard({required this.book, this.onLongPress});
 
   bool get _isNew {
     return DateTime.now().difference(book.createdAt).inDays < 7;
@@ -633,6 +662,7 @@ class _SmallBookCoverCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: onLongPress,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -715,10 +745,12 @@ class _SmallBookCoverCard extends StatelessWidget {
 class _RecommendationCard extends StatelessWidget {
   final BookModel book;
   final VoidCallback onSave;
+  final VoidCallback? onLongPress;
 
   const _RecommendationCard({
     required this.book,
     required this.onSave,
+    this.onLongPress,
   });
 
   @override
@@ -731,6 +763,7 @@ class _RecommendationCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: onLongPress,
       child: Container(
         width: 220,
         decoration: BoxDecoration(
@@ -850,6 +883,87 @@ class _RecommendationCard extends StatelessWidget {
   Widget _coverPlaceholder() {
     return Center(
       child: Icon(Icons.menu_book_rounded, size: 40, color: AppColors.accent.withOpacity(0.3)),
+    );
+  }
+}
+
+class _QuoteSection extends StatelessWidget {
+  final List<QuoteModel> quotes;
+
+  const _QuoteSection({required this.quotes});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+
+    return Column(
+      children: [
+        for (final q in quotes) ...[
+          GestureDetector(
+            onTap: () =>
+                context.push("${AppConstants.routeReader}/${q.bookId}"),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.border_color,
+                      color: Colors.amber,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          q.text.isEmpty ? "(line highlighted)" : q.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${q.bookTitle} · Page ${q.pageIndex}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../data/models/reading_list_model.dart';
 import '../../data/models/reading_progress_model.dart';
 import '../../data/models/review_model.dart';
 import '../../data/models/user_model.dart';
+import '../../data/models/quote_model.dart';
 
 class BookModelAdapter extends TypeAdapter<BookModel> {
   @override
@@ -331,5 +332,38 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
     writer.write(obj.updatedAt);
     writer.writeInt(obj.booksRead);
     writer.writeInt(obj.readingStreak);
+  }
+}
+
+class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
+  @override
+  final int typeId = 10;
+
+  @override
+  QuoteModel read(BinaryReader reader) {
+    return QuoteModel(
+      id: reader.readString(),
+      bookId: reader.readString(),
+      bookTitle: reader.readString(),
+      bookAuthor: reader.readString(),
+      pageIndex: reader.readInt(),
+      text: reader.readString(),
+      normalizedTop: reader.readDouble(),
+      normalizedBottom: reader.readDouble(),
+      createdAt: reader.read(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, QuoteModel obj) {
+    writer.writeString(obj.id);
+    writer.writeString(obj.bookId);
+    writer.writeString(obj.bookTitle);
+    writer.writeString(obj.bookAuthor);
+    writer.writeInt(obj.pageIndex);
+    writer.writeString(obj.text);
+    writer.writeDouble(obj.normalizedTop);
+    writer.writeDouble(obj.normalizedBottom);
+    writer.write(obj.createdAt);
   }
 }

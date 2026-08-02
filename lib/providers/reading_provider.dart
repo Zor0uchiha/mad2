@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../data/repositories/reading_repository.dart';
 import '../data/models/bookmark_model.dart';
 import '../data/models/note_model.dart';
+import '../data/models/quote_model.dart';
 import '../data/models/reading_progress_model.dart';
 import '../data/models/reading_list_model.dart';
 import '../core/constants/app_constants.dart';
@@ -17,6 +18,10 @@ final noteRepositoryProvider = Provider<NoteRepository>((ref) {
 
 final readingProgressProvider = Provider<ReadingProgressRepository>((ref) {
   return ReadingProgressRepository();
+});
+
+final quoteRepositoryProvider = Provider<QuoteRepository>((ref) {
+  return QuoteRepository();
 });
 
 final allBookmarksProvider = FutureProvider<List<BookmarkModel>>((ref) async {
@@ -46,4 +51,14 @@ final readingListsBoxProvider = FutureProvider<Box<ReadingListModel>>((ref) asyn
 final readingProgressForBookProvider = FutureProvider.family<ReadingProgressModel?, String>((ref, bookId) async {
   final repo = ref.watch(readingProgressProvider);
   return repo.getProgress(bookId);
+});
+
+final allQuotesProvider = FutureProvider<List<QuoteModel>>((ref) async {
+  final repo = ref.watch(quoteRepositoryProvider);
+  return repo.getAllQuotes();
+});
+
+final quotesForBookProvider = FutureProvider.family<List<QuoteModel>, String>((ref, bookId) async {
+  final repo = ref.watch(quoteRepositoryProvider);
+  return repo.getQuotesForBook(bookId);
 });

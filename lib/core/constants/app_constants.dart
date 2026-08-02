@@ -28,6 +28,7 @@ class AppConstants {
   static const String hiveBoxSyncQueue = "sync_queue";
   static const String hiveBoxOnlineCache = "online_cache";
   static const String hiveBoxBrowseCache = "browse_cache";
+  static const String hiveBoxQuotes = "quotes";
 
   static const String routeSplash = "/splash";
   static const String routeOnboarding = "/onboarding";
@@ -53,4 +54,5 @@ class AppConstants {
   static const String routeNotifications = "/notifications";
   static const String routeImport = "/import";
   static const String routeReviewDetail = "/review";
+  static const String routeQuotes = "/quotes";
 }

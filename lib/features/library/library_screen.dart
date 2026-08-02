@@ -649,7 +649,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final favorites = _selectedFilter == _BookFilter.all ? books.where((b) => b.isFavorite).toList() : <BookModel>[];
     final finished = _selectedFilter == _BookFilter.all ? books.where((b) => b.progress >= 1).toList() : <BookModel>[];
 
-    final hasSections = _selectedFilter == _BookFilter.all && _searchController.text.isEmpty;
+    final hasSections = _selectedFilter == _BookFilter.all &&
+        _searchController.text.isEmpty &&
+        (continueBooks.isNotEmpty ||
+            recentlyAdded.isNotEmpty ||
+            favorites.isNotEmpty ||
+            finished.isNotEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -880,7 +885,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (continueBooks.isNotEmpty) ...[
-          SliverToBoxAdapter(child: _sectionHeader("Continue Reading", () {})),
+          SliverToBoxAdapter(child: _sectionHeader("Continue Reading", null)),
           SliverToBoxAdapter(
             child: SizedBox(
               height: 200,
