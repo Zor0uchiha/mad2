@@ -6,6 +6,8 @@ import '../data/models/note_model.dart';
 import '../data/models/quote_model.dart';
 import '../data/models/reading_progress_model.dart';
 import '../data/models/reading_list_model.dart';
+import '../features/reader/highlights/highlight_model.dart';
+import '../features/reader/highlights/highlight_repository.dart';
 import '../core/constants/app_constants.dart';
 
 final bookmarkRepositoryProvider = Provider<BookmarkRepository>((ref) {
@@ -61,4 +63,18 @@ final allQuotesProvider = FutureProvider<List<QuoteModel>>((ref) async {
 final quotesForBookProvider = FutureProvider.family<List<QuoteModel>, String>((ref, bookId) async {
   final repo = ref.watch(quoteRepositoryProvider);
   return repo.getQuotesForBook(bookId);
+});
+
+final highlightRepositoryProvider = Provider<HighlightRepository>((ref) {
+  return HighlightRepository();
+});
+
+final allHighlightsProvider = FutureProvider<List<HighlightModel>>((ref) async {
+  final repo = ref.watch(highlightRepositoryProvider);
+  return repo.getAllHighlights();
+});
+
+final highlightsForBookProvider = FutureProvider.family<List<HighlightModel>, String>((ref, bookId) async {
+  final repo = ref.watch(highlightRepositoryProvider);
+  return repo.getHighlightsForBook(bookId);
 });

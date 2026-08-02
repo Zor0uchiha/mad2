@@ -12,6 +12,7 @@ import '../models/reading_progress_model.dart';
 import '../models/review_model.dart';
 import '../models/user_model.dart';
 import '../models/quote_model.dart';
+import '../../features/reader/highlights/highlight_model.dart';
 
 class StorageService {
   static Future<void> initialize() async {
@@ -29,6 +30,7 @@ class StorageService {
     Hive.registerAdapter(adapters.ReviewModelAdapter());
     Hive.registerAdapter(adapters.UserModelAdapter());
     Hive.registerAdapter(adapters.QuoteModelAdapter());
+    Hive.registerAdapter(adapters.HighlightModelAdapter());
   }
 
   static Future<Box<dynamic>> openBox(String name) async {
@@ -53,6 +55,10 @@ class StorageService {
 
   static Future<Box<QuoteModel>> openQuotesBox() async {
     return await Hive.openBox<QuoteModel>(AppConstants.hiveBoxQuotes);
+  }
+
+  static Future<Box<HighlightModel>> openHighlightsBox() async {
+    return await Hive.openBox<HighlightModel>(AppConstants.hiveBoxHighlights);
   }
 
   static Future<Box<ReadingProgressModel>> openReadingProgressBox() async {
@@ -103,6 +109,7 @@ class StorageService {
       AppConstants.hiveBoxOnlineCache,
       AppConstants.hiveBoxBrowseCache,
       AppConstants.hiveBoxQuotes,
+      AppConstants.hiveBoxHighlights,
     ];
     for (final name in boxNames) {
       if (Hive.isBoxOpen(name)) {

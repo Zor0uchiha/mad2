@@ -9,6 +9,7 @@ import '../../data/models/reading_progress_model.dart';
 import '../../data/models/review_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/quote_model.dart';
+import '../../features/reader/highlights/highlight_model.dart';
 
 class BookModelAdapter extends TypeAdapter<BookModel> {
   @override
@@ -365,5 +366,42 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
     writer.writeDouble(obj.normalizedTop);
     writer.writeDouble(obj.normalizedBottom);
     writer.write(obj.createdAt);
+  }
+}
+
+class HighlightModelAdapter extends TypeAdapter<HighlightModel> {
+  @override
+  final int typeId = 11;
+
+  @override
+  HighlightModel read(BinaryReader reader) {
+    return HighlightModel(
+      id: reader.readString(),
+      bookId: reader.readString(),
+      bookTitle: reader.readString(),
+      chapterName: reader.readString(),
+      pageIndex: reader.readInt(),
+      text: reader.readString(),
+      note: reader.read(),
+      color: HighlightColor.values[reader.readInt()],
+      underlined: reader.readBool(),
+      createdAt: reader.read(),
+      updatedAt: reader.read(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, HighlightModel obj) {
+    writer.writeString(obj.id);
+    writer.writeString(obj.bookId);
+    writer.writeString(obj.bookTitle);
+    writer.writeString(obj.chapterName);
+    writer.writeInt(obj.pageIndex);
+    writer.writeString(obj.text);
+    writer.write(obj.note);
+    writer.writeInt(obj.color.index);
+    writer.writeBool(obj.underlined);
+    writer.write(obj.createdAt);
+    writer.write(obj.updatedAt);
   }
 }

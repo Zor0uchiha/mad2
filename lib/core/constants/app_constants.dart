@@ -29,6 +29,7 @@ class AppConstants {
   static const String hiveBoxOnlineCache = "online_cache";
   static const String hiveBoxBrowseCache = "browse_cache";
   static const String hiveBoxQuotes = "quotes";
+  static const String hiveBoxHighlights = "highlights";
 
   static const String routeSplash = "/splash";
   static const String routeOnboarding = "/onboarding";
@@ -55,4 +56,6 @@ class AppConstants {
   static const String routeImport = "/import";
   static const String routeReviewDetail = "/review";
   static const String routeQuotes = "/quotes";
+  static const String routeHighlights = "/highlights";
+  static const String routeQuoteCard = "/quote-card";
 }

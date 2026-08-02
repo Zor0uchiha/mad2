@@ -18,6 +18,8 @@ import '../../features/activity/activity_screen.dart';
 import '../../features/statistics/statistics_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/reader/reader_screen.dart';
+import '../../features/reader/highlights/highlights_screen.dart';
+import '../../features/reader/quote_cards/quote_card_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
 import '../../features/bookmarks/notes_screen.dart';
 import '../../features/library/quotes_screen.dart';
@@ -119,6 +121,23 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppConstants.routeQuotes,
       builder: (context, state) => const QuotesScreen(),
+    ),
+    GoRoute(
+      path: AppConstants.routeHighlights,
+      builder: (context, state) => HighlightsScreen(
+        bookId: state.uri.queryParameters['bookId'],
+      ),
+    ),
+    GoRoute(
+      path: AppConstants.routeQuoteCard,
+      builder: (context, state) => QuoteCardScreen(
+        quote: state.uri.queryParameters['quote'] ?? '',
+        bookTitle: state.uri.queryParameters['title'] ?? '',
+        bookAuthor: state.uri.queryParameters['author'] ?? '',
+        bookId: state.uri.queryParameters['bookId'],
+        pageIndex: int.tryParse(state.uri.queryParameters['page'] ?? '0') ?? 0,
+        chapterName: state.uri.queryParameters['chapter'] ?? '',
+      ),
     ),
     GoRoute(
       path: "${AppConstants.routeCreateNote}/:bookId/:pageIndex",

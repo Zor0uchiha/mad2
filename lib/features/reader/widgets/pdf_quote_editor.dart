@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf_render/pdf_render.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../../../core/providers.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../data/models/book_model.dart';
-import '../../../../data/models/quote_model.dart';
+import '../../../core/providers.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../data/models/book_model.dart';
+import '../../../data/models/quote_model.dart';
 import '../../library/pdf_cover_picker.dart';
 
 Future<void> showPdfQuoteEditor(
