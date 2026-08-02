@@ -38,7 +38,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   double _fontSize = 16.0;
   double _brightness = 1.0;
   double _fontScale = 1.0;
-  ReaderTheme _readerTheme = ReaderTheme.dark;
+  ReaderTheme _readerTheme = ReaderTheme.light;
 
   int _readingSeconds = 0;
   Timer? _timer;
@@ -549,7 +549,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       case ReaderTheme.sepia:
         return const Color(0xFFF5E6C8);
       case ReaderTheme.light:
-        return Colors.white;
+        return const Color(0xFFFBF6EC);
     }
   }
 
@@ -560,7 +560,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       case ReaderTheme.sepia:
         return Colors.brown.shade800;
       case ReaderTheme.light:
-        return Colors.black87;
+        return const Color(0xFF2B2A28);
     }
   }
 
