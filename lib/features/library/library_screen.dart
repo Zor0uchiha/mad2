@@ -24,7 +24,7 @@ enum LibrarySort {
 
 enum _BookFilter { all, favorites, reading, finished, recentlyAdded }
 
-enum _ViewMode { grid, list, compact }
+enum _ViewMode { grid, list, compact, shelf }
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -628,6 +628,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       _viewModeButton(Icons.grid_view_rounded, _ViewMode.grid),
                       _viewModeButton(Icons.list_rounded, _ViewMode.list),
                       _viewModeButton(Icons.view_stream_rounded, _ViewMode.compact),
+                      _viewModeButton(Icons.auto_stories_rounded, _ViewMode.shelf),
                     ],
                   ),
                 ),
@@ -978,7 +979,99 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         return _buildListView(theme, books);
       case _ViewMode.compact:
         return _buildCompactView(theme, books);
+      case _ViewMode.shelf:
+        return _buildShelfView(theme, books);
     }
+  }
+
+  int _shelfCount(List<BookModel> books) {
+    if (books.isEmpty) return 0;
+    return (books.length / 4).ceil();
+  }
+
+  Widget _buildShelfView(ThemeData theme, List<BookModel> books) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+      itemCount: _shelfCount(books),
+      itemBuilder: (_, i) => _buildShelf(theme, books, i),
+    );
+  }
+
+  Widget _buildShelf(ThemeData theme, List<BookModel> books, int shelfIndex) {
+    final start = shelfIndex * 4;
+    final end = (start + 4) > books.length ? books.length : start + 4;
+    final rowBooks = books.sublist(start, end);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (int i = 0; i < rowBooks.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(child: _buildShelfBook(theme, rowBooks[i])),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildShelfBase(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShelfBook(ThemeData theme, BookModel book) {
+    final hasCover = book.coverPath != null && book.coverPath!.isNotEmpty;
+    return GestureDetector(
+      onTap: () => context.push("${AppConstants.routeReader}/${book.id}"),
+      onLongPress: () => _showBookActions(book),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 0.72,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                color: hasCover ? Colors.transparent : AppColors.accent.withOpacity(0.08),
+                child: hasCover
+                    ? Image.file(File(book.coverPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _coverPlaceholder())
+                    : _coverPlaceholder(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            book.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShelfBase() {
+    return Container(
+      height: 14,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8B6E47), Color(0xFF6B4F2F)],
+        ),
+        borderRadius: BorderRadius.circular(3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBookGridSliver(ThemeData theme, List<BookModel> books) {
@@ -1016,6 +1109,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             delegate: SliverChildBuilderDelegate(
               (context, index) => _buildCompactCard(books[index], theme),
               childCount: books.length,
+            ),
+          ),
+        );
+      case _ViewMode.shelf:
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildShelf(theme, books, index),
+              childCount: _shelfCount(books),
             ),
           ),
         );
