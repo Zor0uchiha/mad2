@@ -617,14 +617,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   Widget _buildEpubView() {
-    try {
-      final controller = EpubController(
-        document: _loadEpubBook(),
-      );
-      _epubController = controller;
+    if (_epubController == null) {
+      try {
+        _epubController = EpubController(
+          document: _loadEpubBook(),
+        );
+      } catch (_) {
+        return _buildFallbackContent();
+      }
+    }
 
-      return EpubView(
-        controller: controller,
+    return EpubView(
+        controller: _epubController!,
         onDocumentLoaded: (document) {
           if (!mounted) return;
           final chapters = document.Chapters ?? [];
@@ -645,9 +649,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
           }
         },
       );
-    } catch (e) {
-      return _buildFallbackContent();
-    }
   }
 
   Widget _buildReaderContent() {
